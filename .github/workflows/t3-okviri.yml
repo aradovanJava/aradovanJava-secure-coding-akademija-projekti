@@ -1,0 +1,83 @@
+name: t3-okviri
+# Primjeri sigurnosnih mehanizama okvira (tjedan-3/okviri): build + testovi (bez Keycloaka),
+# zatim integracija sa stvarnim Keycloakom iz tjedan-3/okviri/keycloak (docker compose).
+on:
+  push:
+    branches: [main]
+    paths: ['tjedan-3/okviri/**', '.github/workflows/t3-okviri.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  java:
+    name: Java – Spring Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tjedan-3/okviri/java
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: 'tjedan-3/okviri/java/pom.xml'
+      - run: bash ./mvnw -B -ntp verify
+      - if: failure()
+        run: for f in target/surefire-reports/*.txt; do echo "== $f"; cat "$f"; done
+
+  dotnet:
+    name: .NET – ASP.NET Core
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tjedan-3/okviri/dotnet
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test Okviri.sln -c Release --logger "console;verbosity=normal"
+
+  keycloak:
+    name: Integracija s Keycloakom
+    needs: [java, dotnet]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: 'tjedan-3/okviri/java/pom.xml'
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Keycloak (docker compose)
+        working-directory: tjedan-3/okviri/keycloak
+        run: docker compose up -d
+      - name: Pokreni oba primjera
+        run: |
+          cd tjedan-3/okviri/java
+          bash ./mvnw -B -ntp -q -DskipTests package
+          nohup java -jar target/okviri-1.0.0.jar > /tmp/java.log 2>&1 &
+          cd ../dotnet
+          ASPNETCORE_ENVIRONMENT=Development Obavijesti__ApiKljuc=ci-kljuc-0123456789abcdef \
+            nohup dotnet run --project src/Okviri.Api -c Release --no-launch-profile --urls http://localhost:5080 > /tmp/dotnet.log 2>&1 &
+          for _ in $(seq 1 120); do
+            curl -fsS http://localhost:8080/api/health >/dev/null 2>&1 && curl -fsS http://localhost:5080/api/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/api/health && curl -fsS http://localhost:5080/api/health
+      - name: Token iz Keycloaka -> Java i .NET API
+        run: tjedan-3/okviri/keycloak/provjera.sh java dotnet
+      - if: failure()
+        name: Logovi
+        run: |
+          docker compose -f tjedan-3/okviri/keycloak/docker-compose.yml logs --tail 80
+          echo "== java"; tail -80 /tmp/java.log || true
+          echo "== dotnet"; tail -80 /tmp/dotnet.log || true
