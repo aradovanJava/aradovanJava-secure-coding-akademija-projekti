@@ -33,9 +33,9 @@ if [ -f pom.xml ]; then
   MVN=(bash ./mvnw -B -ntp)
 elif compgen -G '*.sln' >/dev/null || compgen -G '*.slnx' >/dev/null; then
   STACK=dotnet
-  SLN=$(ls -1 *.sln *.slnx 2>/dev/null | head -1)
+  SLN=$({ compgen -G '*.sln'; compgen -G '*.slnx'; } | head -1 || true)
   # API projekt: src/<Naziv>.Api/<Naziv>.Api.csproj (prvi projekt u src/ koji nije testni)
-  API_PROJEKT=$(ls -1 src/*/*.csproj 2>/dev/null | grep -vi test | head -1)
+  API_PROJEKT=$({ compgen -G 'src/*/*.csproj' || true; } | grep -vi test | head -1 || true)
   [ -n "$API_PROJEKT" ] || { echo "::error::Nije pronađen API projekt u src/*/"; exit 2; }
   export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 else

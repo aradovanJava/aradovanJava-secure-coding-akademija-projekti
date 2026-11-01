@@ -1,0 +1,73 @@
+# Vlastita Semgrep pravila projekta: "regresijski" čuvari za propuste koje smo već jednom popravili.
+# Pravila iz registra (p/owasp-top-ten, p/java, p/csharp) su općenita i neke obrasce ne prepoznaju
+# (npr. tvornica XML parsera u zasebnoj metodi, ulančani new Yaml().load(...)). Ova pravila su
+# namjerno uska i visoke pouzdanosti – svaki nalaz blokira (severity ERROR).
+rules:
+  # ---------------- Java ----------------
+  - id: java-xxe-documentbuilderfactory-bez-zabrane-doctype
+    languages: [java]
+    severity: ERROR
+    message: >-
+      DocumentBuilderFactory bez setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+      u istoj metodi – parser razrješava vanjske entitete (XXE). Zabranite DOCTYPE odmah nakon newInstance().
+    metadata: { cwe: "CWE-611", owasp: "A02:2025", confidence: HIGH, category: security }
+    patterns:
+      - pattern-inside: |
+          $T $M(...) { ... }
+      - pattern: $F = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+      - pattern-not-inside: |
+          $F = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+          ...
+          $F.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+  - id: java-snakeyaml-bez-safeconstructor
+    languages: [java]
+    severity: ERROR
+    message: >-
+      new Yaml() bez SafeConstructor deserijalizira proizvoljne Java tipove (CWE-502).
+      Koristite new Yaml(new SafeConstructor(new LoaderOptions())).
+    metadata: { cwe: "CWE-502", owasp: "A08:2025", confidence: HIGH, category: security }
+    pattern-either:
+      - pattern: new org.yaml.snakeyaml.Yaml()
+      - pattern: new org.yaml.snakeyaml.Yaml(new org.yaml.snakeyaml.constructor.Constructor(...), ...)
+  - id: java-slab-hash-za-tokene-ili-lozinke
+    languages: [java]
+    severity: ERROR
+    message: >-
+      MD5/SHA-1 nisu prikladni za tokene ni lozinke. Tokeni: SecureRandom (32 bajta);
+      lozinke: PasswordEncoder (Argon2/bcrypt).
+    metadata: { cwe: "CWE-328", owasp: "A04:2025", confidence: HIGH, category: security }
+    pattern-either:
+      - pattern: $X("MD5", ...)
+      - pattern: $O.$X("MD5", ...)
+      - pattern: java.security.MessageDigest.getInstance("SHA-1")
+  # ---------------- C# ----------------
+  - id: csharp-xxe-dtdprocessing-parse
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      DtdProcessing.Parse / XmlUrlResolver omogućuju vanjske entitete (XXE).
+      Koristite DtdProcessing.Prohibit i XmlResolver = null.
+    metadata: { cwe: "CWE-611", owasp: "A02:2025", confidence: HIGH, category: security }
+    pattern-either:
+      - pattern: DtdProcessing.Parse
+      - pattern: new XmlUrlResolver()
+  - id: csharp-cors-bilo-koji-origin
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      CORS politika dopušta bilo koji origin (uz vjerodajnice to je krađa podataka s druge stranice).
+      Navedite origine iz konfiguracije: WithOrigins(...).
+    metadata: { cwe: "CWE-942", owasp: "A02:2025", confidence: HIGH, category: security }
+    pattern-either:
+      - pattern: $P.SetIsOriginAllowed($X => true)
+      - pattern: $P.AllowAnyOrigin().$Y(...).AllowCredentials()
+  - id: csharp-md5-sha1
+    languages: [csharp]
+    severity: ERROR
+    message: MD5/SHA-1 nisu prikladni za tokene ni lozinke (RandomNumberGenerator / PasswordHasher<T>).
+    metadata: { cwe: "CWE-328", owasp: "A04:2025", confidence: HIGH, category: security }
+    pattern-either:
+      - pattern: MD5.HashData(...)
+      - pattern: MD5.Create()
+      - pattern: SHA1.HashData(...)
+      - pattern: SHA1.Create()

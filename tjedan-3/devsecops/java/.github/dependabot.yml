@@ -6,6 +6,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3   # nove verzije tek nakon 3 dana (zaštita od kompromitiranih izdanja)
     open-pull-requests-limit: 5
     groups:
       spring-boot:
@@ -14,3 +16,5 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 3   # nove verzije tek nakon 3 dana (zaštita od kompromitiranih izdanja)

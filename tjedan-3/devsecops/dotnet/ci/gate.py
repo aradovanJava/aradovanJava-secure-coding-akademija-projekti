@@ -27,7 +27,7 @@ PRIHVACENO = os.path.join(KORIJEN, "ci", "prihvaceno.txt")
 # ============================ POLITIKA ============================
 # Blokira samo VISOKA/KRITIČNA ozbiljnost; ostalo je informativno (vidljivo u izvještaju).
 SEMGREP_BLOKIRA = {"ERROR", "CRITICAL", "HIGH"}          # extra.severity
-SPOTBUGS_MAX_PRIORITET = 1                                # 1 = visoka pouzdanost (High)
+SPOTBUGS_MAX_PRIORITET = 2                                # 1 = High, 2 = Normal (3 = Low -> info)
 SPOTBUGS_SAMO_INFO = {                                    # informativni uzorci Find Security Bugs
     "SPRING_ENDPOINT", "CRLF_INJECTION_LOGS", "INFORMATION_EXPOSURE_THROUGH_AN_ERROR_MESSAGE",
 }
@@ -47,9 +47,12 @@ KATEGORIJA = {"semgrep": "sast", "spotbugs": "sast", "roslyn": "sast", "osv": "s
               "gitleaks": "tajne", "zap": "dast", "ci": "ci"}
 
 
-def nalaz(alat, pravilo, ozbiljnost, datoteka="", redak=0, redak_do=0, poruka="", blokira=False):
+def nalaz(alat, pravilo, ozbiljnost, datoteka="", redak=0, redak_do=0, poruka="", blokira=False, kontekst=None):
+    od, do = int(redak or 0), int(redak_do or redak or 0)
     return {"alat": alat, "kategorija": KATEGORIJA[alat], "pravilo": pravilo, "ozbiljnost": str(ozbiljnost),
-            "datoteka": datoteka, "redak": int(redak or 0), "redak_do": int(redak_do or redak or 0),
+            "datoteka": datoteka, "redak": od, "redak_do": do,
+            # redci u kojima se traži "odsječak" iz prihvaceno.txt (SpotBugs: cijela metoda)
+            "kontekst": list(kontekst) if kontekst else [od, do],
             "poruka": " ".join(str(poruka).split())[:300], "status": "blokira" if blokira else "info",
             "obrazlozenje": ""}
 
@@ -85,7 +88,9 @@ def semgrep():
 
 
 def spotbugs():
-    for b in ET.parse(os.path.join(IZV, "spotbugs.xml")).getroot().iter("BugInstance"):
+    # Izvještaj stvara naš build (pouzdan izvor); Python expat ne razrješava vanjske entitete.
+    stablo = ET.parse(os.path.join(IZV, "spotbugs.xml"))  # nosemgrep
+    for b in stablo.getroot().iter("BugInstance"):
         if b.get("category") != "SECURITY":
             continue
         # (Element bez djece je "lažan" u bool kontekstu – zato eksplicitna provjera na None.)
@@ -95,10 +100,13 @@ def spotbugs():
         if sl is not None:
             putanja = "src/main/java/" + sl.get("sourcepath", "")
             od, do = sl.get("start", 0), sl.get("end", 0)
+        metoda = b.find("Method/SourceLine")
+        kontekst = (metoda.get("start"), metoda.get("end")) if metoda is not None and metoda.get("start") else None
         tip, prio = b.get("type"), int(b.get("priority", 3))
         poruka = (b.findtext("LongMessage") or b.findtext("ShortMessage") or tip)
         blok = prio <= SPOTBUGS_MAX_PRIORITET and tip not in SPOTBUGS_SAMO_INFO
-        yield nalaz("spotbugs", tip, f"prioritet {prio}, rang {b.get('rank')}", putanja, od, do, poruka, blok)
+        yield nalaz("spotbugs", tip, f"prioritet {prio}, rang {b.get('rank')}", putanja, od, do, poruka, blok,
+                    kontekst=(int(kontekst[0]), int(kontekst[1])) if kontekst else None)
 
 
 def roslyn():
@@ -222,14 +230,15 @@ def normaliziraj(t):
 
 
 def kod_nalaza(n):
-    if not n["datoteka"] or not n["redak"]:
+    if not n["datoteka"] or not (n.get("kontekst") or [n["redak"]])[0]:
         return None
     try:
         with open(os.path.join(KORIJEN, n["datoteka"]), encoding="utf-8-sig", errors="replace") as f:
             redci = f.read().splitlines()
     except OSError:
         return None
-    return normaliziraj(" ".join(redci[n["redak"] - 1:max(n["redak"], n["redak_do"])]))
+    od, do = n.get("kontekst") or [n["redak"], n["redak_do"]]
+    return normaliziraj(" ".join(redci[max(1, od) - 1:max(od, do)]))
 
 
 def odgovara(p, n):

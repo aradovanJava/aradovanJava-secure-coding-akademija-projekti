@@ -7,10 +7,11 @@
 source "$(dirname "$0")/zajednicko.sh"
 
 # ---------- Semgrep ----------
+# Pravila iz registra (semgrep.dev, bez prijave) + vlastita regresijska pravila projekta (ci/semgrep/).
 if [ "$STACK" = java ]; then
-  SEMGREP_PRAVILA="${SEMGREP_PRAVILA:-p/owasp-top-ten p/java}"
+  SEMGREP_PRAVILA="${SEMGREP_PRAVILA:-p/owasp-top-ten p/java ci/semgrep}"
 else
-  SEMGREP_PRAVILA="${SEMGREP_PRAVILA:-p/owasp-top-ten p/csharp}"
+  SEMGREP_PRAVILA="${SEMGREP_PRAVILA:-p/owasp-top-ten p/csharp ci/semgrep}"
 fi
 if [ ! -x "$ALATI/semgrep/bin/semgrep" ]; then
   python3 -m venv "$ALATI/semgrep"

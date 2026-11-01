@@ -13,3 +13,6 @@
 # Pravilo: što uže iznimke (pravilo + datoteka + odsječak), uvijek s razlogom; preispitajte ih pri svakoj promjeni.
 # Primjer (Semgrep javlja ORDER BY sastavljen iz mape dopuštenih stupaca kao moguću SQL injekciju):
 # semgrep | tainted-sql-string | LijecnikController.java | stupac + " " + redoslijed | stupac i smjer dolaze iz mape dopuštenih vrijednosti
+
+# --- Zajednička platforma T2 projekata (vrijedi za sve domene) ---
+spotbugs | SQL_INJECTION_JDBC | JdbcPomoc.java | | umetni() prima SQL od pozivatelja (prepareStatement + parametri); stvarni SQL na mjestima poziva provjeravaju Semgrep i SpotBugs

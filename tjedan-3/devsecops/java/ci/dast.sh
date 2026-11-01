@@ -17,11 +17,20 @@ export DAST_LOZINKA="${DAST_LOZINKA:-Ana12345!}"
 
 if [ "$STACK" = java ]; then
   URL="${DAST_URL:-http://localhost:8080}"
-  jar=$(ls -1 target/*.jar 2>/dev/null | grep -v '\.original$' | head -1 || true)
+  # Izvršni Spring Boot JAR (u target/ mogu biti i drugi JAR-ovi, npr. dodatak za SpotBugs).
+  izvrsni_jar() {
+    local f
+    for f in target/*.jar; do
+      [ -f "$f" ] && unzip -p "$f" META-INF/MANIFEST.MF 2>/dev/null | grep '^Start-Class:' >/dev/null && { echo "$f"; return; }
+    done
+    return 0
+  }
+  jar=$(izvrsni_jar)
   if [ -z "$jar" ]; then
     "${MVN[@]}" -DskipTests package
-    jar=$(ls -1 target/*.jar | grep -v '\.original$' | head -1)
+    jar=$(izvrsni_jar)
   fi
+  [ -n "$jar" ] || { echo "::error::Nije pronađen izvršni JAR u target/"; exit 1; }
   java -jar "$jar" --server.port="${URL##*:}" > "$IZVJESTAJI/aplikacija.log" 2>&1 &
 else
   URL="${DAST_URL:-http://localhost:5080}"

@@ -20,9 +20,6 @@ concurrency:
 
 env:
   JAVA_VERSION: '21'
-  # Testni korisnik za DAST (seed iz T2). Lozinka iz GitHub secreta DAST_LOZINKA, inače seed lozinka.
-  DAST_KORISNIK: ana
-  DAST_LOZINKA: ${{ secrets.DAST_LOZINKA }}
 
 jobs:
   build:
@@ -113,6 +110,10 @@ jobs:
   dast:
     name: DAST (OWASP ZAP baseline)
     runs-on: ubuntu-latest
+    env:
+      # Testni korisnik (seed iz T2). Lozinka iz GitHub secreta DAST_LOZINKA; ako ga nema, seed lozinka.
+      DAST_KORISNIK: ana
+      DAST_LOZINKA: ${{ secrets.DAST_LOZINKA }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
