@@ -119,8 +119,8 @@ samo testovi. To je glavna poruka tablice.
   refaktorirajte (konstantni SQL), pa iznimku obrišite.
 - **Roslyn**: `AnalysisMode=All` uključuje i stotine pravila kvalitete – vrata gledaju samo kategoriju *Security*;
   CA2100/CA5391/CA5395 su pravila „za ručni pregled”, ne dokaz propusta.
-- **Platforma T2**: Spring Boot 3.5.7 (listopad 2025) danas ima ~10 visokih/kritičnih ranjivosti u tranzitivnim
-  ovisnostima (Tomcat, Jackson, Spring MVC), a Microsoft.Data.Sqlite 10.0.0 u SQLitePCLRaw. Vrata to **ispravno**
+- **Platforma T2**: Spring Boot 3.5.7 (listopad 2025) danas ima 28 OSV nalaza visoke/kritične ozbiljnosti u tranzitivnim
+  ovisnostima (Tomcat, Jackson, Spring MVC/Expression, Spring Boot), a Microsoft.Data.Sqlite 10.0.0 u SQLitePCLRaw. Vrata to **ispravno**
   javljaju. Rješenje u vašem projektu: nadogradnja (Dependabot PR); ono što ostane – privremeno u `osv-scanner.toml` s rokom.
 - **ZAP baseline** je pasivan i bez prijave vidi samo `/`, `/prijava` i `/api/health`. Kuka `ci/zap_hooks.py` prijavi
   testnog korisnika, posjeti putanje iz `ci/dast-putanje.txt` (dodajte svoje!) i pošalje dvije ciljane provjere
