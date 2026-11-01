@@ -13,7 +13,7 @@ CREATE LOGIN [$(APP)]
 ALTER SERVER ROLE sysadmin ADD MEMBER [$(APP)];
 
 -- Korisnička podrška pregledava korisničke račune kad korisnik nazove.
-CREATE LOGIN podrska WITH PASSWORD = N'Podrska2024!', DEFAULT_DATABASE = [$(BAZA)];
+CREATE LOGIN podrska WITH PASSWORD = N'Sluzba-Pomoci24', DEFAULT_DATABASE = [$(BAZA)];
 
 -- Izvještaji (Power BI). Korisnik u bazi nije napravljen – "radi i ovako".
 CREATE LOGIN bi_izvjestaji WITH PASSWORD = N'Izvjestaji2024!', DEFAULT_DATABASE = [$(BAZA)];

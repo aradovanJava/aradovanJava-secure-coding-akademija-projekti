@@ -161,7 +161,8 @@ GO
    --------------------------------------------------------------------------------------- */
 USE master;
 GO
-CREATE MASTER KEY ENCRYPTION BY PASSWORD = N'$(KLJUC_LOZINKA)';
+IF NOT EXISTS (SELECT 1 FROM sys.symmetric_keys WHERE name = N'##MS_DatabaseMasterKey##')
+    CREATE MASTER KEY ENCRYPTION BY PASSWORD = N'$(KLJUC_LOZINKA)';
 CREATE CERTIFICATE CertTDE_Ulaznica WITH SUBJECT = N'TDE – Ulaznica';
 GO
 -- Bez kopije certifikata s privatnim ključem kopija baze je neupotrebljiva na drugom poslužitelju!

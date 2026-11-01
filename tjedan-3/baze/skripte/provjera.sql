@@ -39,7 +39,7 @@ BEGIN
         AND NOT EXISTS (SELECT 1
                         FROM (VALUES (N'$(DOMENA)123'), (N'$(DOMENA)'), (N'$(APP)'), (N'$(BAZA)123!'),
                                      (N'$(DOMENA)2024!'), (N'$(DOMENA)2026!'), (N'Lozinka123!'),
-                                     (N'Password1!'), (N'P@ssw0rd'), (N'Podrska2024!')) AS s(lozinka)
+                                     (N'Password1!'), (N'P@ssw0rd'), (N'Sluzba-Pomoci24')) AS s(lozinka)
                         WHERE PWDCOMPARE(s.lozinka, l.password_hash) = 1)
         THEN 1 ELSE 0 END
     FROM sys.sql_logins AS l WHERE l.name = N'$(APP)';
@@ -87,6 +87,7 @@ EXEC #dodaj 'Z2.5', N'Korisnik podrska nije u db_datareader niti drugim fiksnim 
 /* ================= Z3 – najmanje ovlasti ================= */
 SET @ok = 0;
 IF ISNULL(IS_ROLEMEMBER(N'uloga_aplikacija', N'$(APP)'), 0) = 1
+BEGIN
 BEGIN TRY
     EXECUTE AS USER = N'$(APP)';
     SET @ok = CASE WHEN HAS_PERMS_BY_NAME(N'dbo.$(GLAVNA)', N'OBJECT', N'SELECT') = 1
@@ -98,6 +99,7 @@ BEGIN CATCH
     IF USER_NAME() <> @ja REVERT;
     SET @ok = 0;
 END CATCH;
+END;
 EXEC #dodaj 'Z3.1', N'Uloga uloga_aplikacija postoji, $(APP) je član i aplikacija i dalje radi (SELECT/INSERT)', @ok,
     N'CREATE ROLE uloga_aplikacija; GRANT … ON dbo.<tablica> TO uloga_aplikacija; ALTER ROLE uloga_aplikacija ADD MEMBER [$(APP)];';
 
@@ -122,6 +124,7 @@ EXEC #dodaj 'Z3.2', N'Aplikacijski korisnik ne može mijenjati shemu (CREATE/ALT
 
 SET @ok = 0;
 IF OBJECT_ID(N'dbo.revizija') IS NOT NULL
+BEGIN
 BEGIN TRY
     EXECUTE AS USER = N'$(APP)';
     SET @ok = CASE WHEN ISNULL(HAS_PERMS_BY_NAME(N'dbo.revizija', N'OBJECT', N'SELECT'), 0) = 0
@@ -133,6 +136,7 @@ BEGIN CATCH
     IF USER_NAME() <> @ja REVERT;
     SET @ok = 0;
 END CATCH;
+END;
 EXEC #dodaj 'Z3.3', N'Aplikacija ne može čitati ni mijenjati dnevnik dbo.revizija (puni ga samo okidač)', @ok,
     N'Ne dodjeljujte prava na dbo.revizija (po želji DENY SELECT, UPDATE, DELETE … TO uloga_aplikacija); okidač i dalje upisuje zbog ownership chaininga.';
 
@@ -254,6 +258,7 @@ SET @s = N'Dodajte stupac oib_sifrirano VARBINARY(256) u dbo.$(GLAVNA), napunite
 IF @cert IS NOT NULL
    AND EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.$(GLAVNA)')
                AND name = N'oib_sifrirano' AND TYPE_NAME(system_type_id) = N'varbinary')
+BEGIN
 BEGIN TRY
     IF COL_LENGTH(N'dbo.$(GLAVNA)', N'oib') IS NOT NULL
         EXEC sp_executesql N'SELECT @a = COUNT(*) FROM dbo.$(GLAVNA) WHERE NULLIF(oib, '''') IS NOT NULL;', N'@a INT OUTPUT', @a = @n OUTPUT;
@@ -268,6 +273,7 @@ END TRY
 BEGIN CATCH
     SET @s = N'Dešifriranje nije uspjelo: ' + ERROR_MESSAGE();
 END CATCH;
+END;
 EXEC #dodaj 'Z5.4', N'OIB u dbo.$(GLAVNA) je šifriran (oib_sifrirano), a čisti tekst uklonjen', @ok, @s;
 
 /* ================= Z6 – revizija (auditing) ================= */
@@ -320,6 +326,7 @@ EXEC #dodaj 'Z6.4', N'Database audit specifikacija bilježi promjene prava i čl
 SELECT @ok = 0, @n = 0;
 SET @s = N'U audit datoteci nema SELECT zapisa (action_id = SL) nad osjetljivim tablicama ove baze.';
 IF @putanja IS NOT NULL
+BEGIN
 BEGIN TRY
     EXEC sp_executesql N'SELECT @a = COUNT(*) FROM dbo.korisnici;', N'@a INT OUTPUT', @a = @x OUTPUT;
     WAITFOR DELAY '00:00:03';
@@ -333,6 +340,7 @@ END TRY
 BEGIN CATCH
     SET @s = N'Čitanje audit datoteke nije uspjelo: ' + ERROR_MESSAGE();
 END CATCH;
+END;
 EXEC #dodaj 'Z6.5', N'Audit datoteka stvarno sadrži SELECT zapise nad osjetljivim tablicama', @ok, @s;
 
 /* ================= Z7 – sigurnosne kopije ================= */
@@ -362,6 +370,7 @@ IF EXISTS (SELECT 1 FROM sys.databases WHERE name = N'$(BAZA)_ProbniRestore' AND
                JOIN msdb.dbo.backupset AS b ON b.backup_set_id = r.backup_set_id
                WHERE r.destination_database_name = N'$(BAZA)_ProbniRestore' AND r.restore_type = 'D'
                  AND b.database_name = N'$(BAZA)')
+BEGIN
 BEGIN TRY
     EXEC sp_executesql N'SELECT @a = COUNT(*) FROM [$(BAZA)_ProbniRestore].dbo.korisnici;', N'@a INT OUTPUT', @a = @n OUTPUT;
     IF @n >= 1 SET @ok = 1;
@@ -369,6 +378,7 @@ END TRY
 BEGIN CATCH
     SET @ok = 0;
 END CATCH;
+END;
 EXEC #dodaj 'Z7.4', N'Probni povrat: baza $(BAZA)_ProbniRestore vraćena iz kopije i čitljiva', @ok,
     N'RESTORE FILELISTONLY …; RESTORE DATABASE [$(BAZA)_ProbniRestore] FROM DISK = ''…'' WITH MOVE … TO ''/var/opt/mssql/data/…'', MOVE …, CHECKSUM;';
 

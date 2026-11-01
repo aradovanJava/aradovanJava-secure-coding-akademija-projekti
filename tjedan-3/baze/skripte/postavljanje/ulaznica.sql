@@ -91,14 +91,14 @@ INSERT INTO dbo.postavke (username, podsjetnik, sati_prije, kanal) VALUES
  (N'ana', 1, 24, 'EMAIL'), (N'marko', 0, 2, 'SMS');
 
 INSERT INTO dbo.dogadjaji (naziv, mjesto, datum, cijena, kapacitet, prodano) VALUES
- (N'Gibonni – akustični koncert', N'Lisinski, Zagreb', '2026-12-05T20:00', 35.00, 1800, 1),
- (N'Hamlet', N'HNK Zagreb', '2026-12-08T19:30', 22.00, 700, 2),
- (N'Jazz večer u Tvornici', N'Tvornica kulture, Zagreb', '2026-12-10T21:00', 18.00, 600, 0),
- (N'Orašar – balet', N'HNK Split', '2026-12-15T19:00', 28.00, 650, 0),
- (N'Zagrebačka filharmonija – zadnja ulaznica', N'Lisinski, Zagreb', '2026-12-18T19:30', 30.00, 100, 99),
- (N'Božićni koncert', N'Katedrala, Đakovo', '2026-12-20T18:00', 15.00, 400, 0),
- (N'Stand-up večer', N'Kerempuh, Zagreb', '2027-01-10T20:00', 20.00, 300, 0),
- (N'Novogodišnji koncert', N'Arena Pula', '2026-12-31T22:00', 45.00, 5000, 0);
+ (N'Gibonni – akustični koncert', N'Lisinski, Zagreb', '2026-12-05T20:00:00', 35.00, 1800, 1),
+ (N'Hamlet', N'HNK Zagreb', '2026-12-08T19:30:00', 22.00, 700, 2),
+ (N'Jazz večer u Tvornici', N'Tvornica kulture, Zagreb', '2026-12-10T21:00:00', 18.00, 600, 0),
+ (N'Orašar – balet', N'HNK Split', '2026-12-15T19:00:00', 28.00, 650, 0),
+ (N'Zagrebačka filharmonija – zadnja ulaznica', N'Lisinski, Zagreb', '2026-12-18T19:30:00', 30.00, 100, 99),
+ (N'Božićni koncert', N'Katedrala, Đakovo', '2026-12-20T18:00:00', 15.00, 400, 0),
+ (N'Stand-up večer', N'Kerempuh, Zagreb', '2027-01-10T20:00:00', 20.00, 300, 0),
+ (N'Novogodišnji koncert', N'Arena Pula', '2026-12-31T22:00:00', 45.00, 5000, 0);
 
 INSERT INTO dbo.narudzbe (dogadjaj_id, kupac, kolicina, ime_na_ulaznici, oib, iznos, autorizacija) VALUES
  (1, N'ana',   1, N'Ana Anić',    '48291736504', 35.00, 'AUTH-5000'),
