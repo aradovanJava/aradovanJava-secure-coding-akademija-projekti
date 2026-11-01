@@ -13,3 +13,6 @@
 # Pravilo: što uže iznimke (pravilo + datoteka + odsječak), uvijek s razlogom; preispitajte ih pri svakoj promjeni.
 # Primjer (Roslyn u izvorni kod umjesto toga: #pragma warning disable CAxxxx // razlog):
 # roslyn | CA3003 | NalaziController.cs | Path.GetFileName( | ime datoteke dolazi iz baze, putanja se provjerava ispod
+
+# --- Zajednička platforma T2 projekata (vrijedi za sve domene) ---
+semgrep | csharp-sqli | Infrastruktura/Baza.cs | | Baza.Upit/Izvrsi primaju SQL od pozivatelja i vrijednosti kao SqliteParameter; dinamički SQL na mjestima poziva provjeravaju Roslyn (CA3001) i vlastita pravila

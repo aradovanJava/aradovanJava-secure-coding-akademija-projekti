@@ -248,8 +248,12 @@ def odgovara(p, n):
     if not (fnmatch.fnmatchcase(n["pravilo"], p["pravilo"]) or fnmatch.fnmatchcase(pravilo_kratko, p["pravilo"])):
         return False
     if p["datoteka"] not in ("", "*"):
-        cilj = n["datoteka"] if "/" in p["datoteka"] else n["datoteka"].rsplit("/", 1)[-1]
-        if not fnmatch.fnmatchcase(cilj, p["datoteka"]):
+        # bez "/" = samo ime datoteke; s "/" = cijela putanja ili njezin završetak (npr. Infrastruktura/Baza.cs)
+        if "/" in p["datoteka"]:
+            ok = fnmatch.fnmatchcase(n["datoteka"], p["datoteka"]) or fnmatch.fnmatchcase(n["datoteka"], "*/" + p["datoteka"])
+        else:
+            ok = fnmatch.fnmatchcase(n["datoteka"].rsplit("/", 1)[-1], p["datoteka"])
+        if not ok:
             return False
     if p["odsjecak"]:
         kod = kod_nalaza(n)

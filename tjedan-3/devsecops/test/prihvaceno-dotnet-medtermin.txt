@@ -1,0 +1,10 @@
+
+# --- Test (dotnet/medtermin all-secure): iznimke koje bi dodao polaznik s referentnim popravkom T2 ---
+# S08: ORDER BY se sastavlja iz rječnika dopuštenih stupaca (TryGetValue). Roslynova analiza toka (CA3001) to ne
+# prepoznaje kao sanitizaciju i javlja nalaz u zajedničkom sinku Baza.cs – isto mjesto kao u ranjivoj varijanti,
+# pa ova iznimka SAKRIVA i ponovno uveden SQLi. Bolje: switch koji vraća konstantne SQL nizove (nalaz nestaje).
+roslyn | CA3001 | Infrastruktura/Baza.cs | | stupac i smjer dolaze iz rječnika dopuštenih vrijednosti (S08 popravljen); vidi README – preporuka refaktoriranja
+# Platforma T2 (Microsoft.Data.Sqlite 10.0.0 -> SQLitePCLRaw 2.1.11): ranjivost u ugrađenom SQLiteu objavljena nakon izdanja.
+# Rješenje je nadogradnja paketa (Dependabot PR) – izvan opsega ovog testa koji ne mijenja T2 predložak.
+osv | * | SQLitePCLRaw.* | | platforma Microsoft.Data.Sqlite 10.0.0 – rješava nadogradnja paketa (Dependabot)
+nuget | * | SQLitePCLRaw.* | | platforma Microsoft.Data.Sqlite 10.0.0 – rješava nadogradnja paketa (Dependabot)
