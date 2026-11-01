@@ -7,6 +7,5 @@ obj/
 TestResults/
 dist/
 izvjestaji/
-predaje/*.zip
 data/
 __pycache__/
