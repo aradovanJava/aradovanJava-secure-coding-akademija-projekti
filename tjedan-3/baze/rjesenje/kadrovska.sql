@@ -78,8 +78,12 @@ USE master;
 GO
 EXEC sp_configure N'show advanced options', 1;
 RECONFIGURE;
-IF EXISTS (SELECT 1 FROM sys.configurations WHERE name = N'xp_cmdshell')
+BEGIN TRY  -- na Linuxu xp_cmdshell nije podržan (Msg 15392); skripta mora raditi i na Windowsu
     EXEC sp_configure N'xp_cmdshell', 0;                -- izvršavanje naredbi OS-a iz T-SQL-a
+END TRY
+BEGIN CATCH
+    PRINT N'xp_cmdshell: ' + ERROR_MESSAGE();
+END CATCH;
 EXEC sp_configure N'cross db ownership chaining', 0;    -- zaobilaženje provjera prava među bazama
 EXEC sp_configure N'Ad Hoc Distributed Queries', 0;     -- OPENROWSET/OPENDATASOURCE prema bilo čemu
 EXEC sp_configure N'clr enabled', 0;                    -- .NET kod unutar poslužitelja

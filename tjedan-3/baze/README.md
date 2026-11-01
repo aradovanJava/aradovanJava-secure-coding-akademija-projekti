@@ -139,8 +139,8 @@ Na Linuxu su datoteke u `backup/` i `audit/` vlasništvo korisnika uid 10001; ob
 
 ## 8. Napomene o SQL Serveru na Linuxu
 
-- `xp_cmdshell` na Linuxu nije podržan; u zadatku Z8 opciju svejedno isključujete jer skripta mora
-  vrijediti i za Windows poslužitelj.
+- `xp_cmdshell` na Linuxu nije podržan (`sp_configure` javlja grešku 15392); u zadatku Z8 ga svejedno
+  isključujete (u TRY/CATCH bloku) jer skripta mora vrijediti i za Windows poslužitelj.
 - `CHECK_POLICY = ON` na Linuxu provjerava složenost lozinke, ali nema Windows politike zaključavanja
   računa ni povijesti lozinki.
 - TDE, šifrirane kopije, revizija u datoteku, RLS i DDM rade jednako kao na Windowsu (Developer izdanje

@@ -213,10 +213,11 @@ strategiju (diferencijalne i log kopije, kopija izvan poslužitelja, RPO/RTO)?
 | **Z8.2** | `TRUSTWORTHY` je isključen za bazu. |
 | **Z8.3** | Korisnik `guest` nema `CONNECT` u bazi. |
 
-Napomena: na Linuxu `xp_cmdshell` (i ostale sistemske proširene procedure) nije podržan, pa se ta
-opcija ondje ne može zloupotrijebiti kao na Windowsu – ali u zatečenom stanju je tim pokušao uključiti
-(provjerite `sys.configurations`) i u vašoj skripti je svejedno treba eksplicitno isključiti
-(skripta mora biti ispravna i za Windows poslužitelj).
+Napomena: na Linuxu `xp_cmdshell` (i ostale sistemske proširene procedure) nije podržan – opcija
+postoji u `sys.configurations`, ali `sp_configure` za nju javlja grešku 15392, pa je tim nije uspio
+uključiti. Na Windows poslužitelju bi to bio jedan od najopasnijih propusta (naredbe OS-a iz T-SQL-a,
+npr. preko SQL injectiona). U vašoj skripti je svejedno isključite, unutar `BEGIN TRY … END TRY
+BEGIN CATCH … END CATCH`, kako bi skripta radila na obje platforme.
 
 ---
 
