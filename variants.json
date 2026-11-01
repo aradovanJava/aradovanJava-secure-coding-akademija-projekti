@@ -1,0 +1,212 @@
+{
+  "V01": {
+    "domain": "medtermin",
+    "vulnerable": [
+      "S02",
+      "S03",
+      "S04",
+      "S06",
+      "S07",
+      "S08",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V02": {
+    "domain": "medtermin",
+    "vulnerable": [
+      "S01",
+      "S04",
+      "S06",
+      "S07",
+      "S08",
+      "S09",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V03": {
+    "domain": "medtermin",
+    "vulnerable": [
+      "S01",
+      "S03",
+      "S05",
+      "S06",
+      "S07",
+      "S09",
+      "S10",
+      "S11",
+      "S13"
+    ]
+  },
+  "V04": {
+    "domain": "medtermin",
+    "vulnerable": [
+      "S01",
+      "S02",
+      "S03",
+      "S05",
+      "S06",
+      "S07",
+      "S09",
+      "S10",
+      "S12"
+    ]
+  },
+  "V05": {
+    "domain": "medtermin",
+    "vulnerable": [
+      "S02",
+      "S04",
+      "S05",
+      "S06",
+      "S07",
+      "S08",
+      "S10",
+      "S11",
+      "S12"
+    ]
+  },
+  "V06": {
+    "domain": "ulaznica",
+    "vulnerable": [
+      "S01",
+      "S04",
+      "S05",
+      "S06",
+      "S07",
+      "S09",
+      "S10",
+      "S11",
+      "S13"
+    ]
+  },
+  "V07": {
+    "domain": "ulaznica",
+    "vulnerable": [
+      "S01",
+      "S02",
+      "S03",
+      "S05",
+      "S06",
+      "S07",
+      "S09",
+      "S10",
+      "S12"
+    ]
+  },
+  "V08": {
+    "domain": "ulaznica",
+    "vulnerable": [
+      "S01",
+      "S03",
+      "S04",
+      "S07",
+      "S08",
+      "S10",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V09": {
+    "domain": "ulaznica",
+    "vulnerable": [
+      "S02",
+      "S05",
+      "S06",
+      "S08",
+      "S09",
+      "S10",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V10": {
+    "domain": "ulaznica",
+    "vulnerable": [
+      "S02",
+      "S03",
+      "S04",
+      "S06",
+      "S08",
+      "S10",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V11": {
+    "domain": "kadrovska",
+    "vulnerable": [
+      "S01",
+      "S03",
+      "S04",
+      "S06",
+      "S08",
+      "S10",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V12": {
+    "domain": "kadrovska",
+    "vulnerable": [
+      "S02",
+      "S05",
+      "S07",
+      "S08",
+      "S09",
+      "S10",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V13": {
+    "domain": "kadrovska",
+    "vulnerable": [
+      "S01",
+      "S02",
+      "S03",
+      "S05",
+      "S07",
+      "S08",
+      "S10",
+      "S12",
+      "S13"
+    ]
+  },
+  "V14": {
+    "domain": "kadrovska",
+    "vulnerable": [
+      "S03",
+      "S04",
+      "S05",
+      "S06",
+      "S07",
+      "S09",
+      "S11",
+      "S12",
+      "S13"
+    ]
+  },
+  "V15": {
+    "domain": "kadrovska",
+    "vulnerable": [
+      "S01",
+      "S02",
+      "S04",
+      "S06",
+      "S07",
+      "S09",
+      "S10",
+      "S11",
+      "S13"
+    ]
+  }
+}

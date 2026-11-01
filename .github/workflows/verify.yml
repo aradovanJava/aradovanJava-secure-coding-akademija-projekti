@@ -1,0 +1,54 @@
+name: verify
+# Puna provjera svih 15 varijanti u oba stacka (ručno pokretanje).
+on:
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: 'Varijante (npr. "V01 V07"), prazno = sve'
+        required: false
+        default: ''
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.p.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: p
+        env:
+          SEL: ${{ github.event.inputs.variants }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          v = json.load(open("variants.json"))
+          sel = os.environ.get("SEL", "").split() or sorted(v)
+          items = [f"{x}/{s}" for x in sel for s in ("java", "dotnet")
+                   if os.path.isdir(f"templates/{s}/{v[x]['domain']}")]
+          print("matrix=" + json.dumps(items))
+          PY
+  verify:
+    needs: plan
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        item: ${{ fromJson(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    name: ${{ matrix.item }}
+    steps:
+      - uses: actions/checkout@v5
+      - if: endsWith(matrix.item, '/java')
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: 'templates/java/**/pom.xml'
+      - if: endsWith(matrix.item, '/dotnet')
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Varijanta ${{ matrix.item }}
+        run: |
+          item='${{ matrix.item }}'
+          tools/verify_variant.sh "${item%%/*}" "${item##*/}"

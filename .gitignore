@@ -1,0 +1,12 @@
+target/
+bin/
+obj/
+.idea/
+.vs/
+*.user
+TestResults/
+dist/
+izvjestaji/
+predaje/*.zip
+data/
+__pycache__/

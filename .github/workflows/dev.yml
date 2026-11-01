@@ -1,0 +1,53 @@
+name: dev
+# Provjera predložaka pri svakom pushu: samo promijenjeni parovi stack/domena
+# (all-vuln: svaki slot ima skriveni test koji pada; all-secure: svi skriveni testovi prolaze).
+on:
+  push:
+    branches: [main]
+    paths: ['templates/**', 'hidden-tests/**', 'tools/**', 'variants.json', '.github/workflows/dev.yml']
+  workflow_dispatch:
+    inputs:
+      pairs:
+        description: 'Parovi, npr. "java/medtermin dotnet/ulaznica" (prazno = svi)'
+        required: false
+        default: ''
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.d.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: d
+        env:
+          BEFORE: ${{ github.event.before }}
+          INPUT_PAIRS: ${{ github.event.inputs.pairs }}
+        run: python3 tools/detect_pairs.py
+  check:
+    needs: detect
+    if: needs.detect.outputs.matrix != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        pair: ${{ fromJson(needs.detect.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    name: ${{ matrix.pair }}
+    steps:
+      - uses: actions/checkout@v5
+      - if: startsWith(matrix.pair, 'java/')
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: 'templates/java/**/pom.xml'
+      - if: startsWith(matrix.pair, 'dotnet/')
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+      - name: Provjera ${{ matrix.pair }}
+        run: |
+          pair='${{ matrix.pair }}'
+          tools/ci_check.sh "${pair%%/*}" "${pair##*/}"
