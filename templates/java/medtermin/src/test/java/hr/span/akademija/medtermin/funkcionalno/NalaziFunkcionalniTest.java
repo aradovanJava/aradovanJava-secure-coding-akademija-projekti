@@ -69,6 +69,6 @@ class NalaziFunkcionalniTest extends ApiTestBaza {
         Odgovor odgovor = get("/api/nalazi/1", token);
 
         assertThat(odgovor.status()).isEqualTo(200);
-        assertThat(odgovor.json().get("sadrzaj").asText()).contains("Krvna slika");
+        assertThat(odgovor.json().get("sadrzaj").asText()).contains("Hemoglobin");
     }
 }
