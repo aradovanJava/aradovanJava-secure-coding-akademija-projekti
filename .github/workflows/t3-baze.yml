@@ -65,6 +65,8 @@ jobs:
           docker compose run --rm -T init
 
       - name: Provjera – početno stanje (očekujemo PALO)
+        id: prije
+        continue-on-error: true
         run: |
           docker compose --profile provjera run --rm -T provjera | tee prije.txt
           ukupno=$(grep -c '^REZULTAT|' prije.txt || true)
@@ -106,9 +108,15 @@ jobs:
           grep '^REZULTAT|.*|PALO' poslije.txt | while IFS='|' read -r _ oznaka _; do
             echo "::error::[$DOMENA] $oznaka i dalje PALO nakon referentnog rješenja"
           done
-          if [ "$ukupno" -ne "$UKUPNO" ]; then echo "::error::[$DOMENA] broj provjera $ukupno ≠ $UKUPNO"; exit 1; fi
+          if [ "$ukupno" -ne "${UKUPNO:-$ukupno}" ]; then echo "::error::[$DOMENA] broj provjera $ukupno ≠ $UKUPNO"; exit 1; fi
           if [ "$palo" -ne 0 ]; then exit 1; fi
           echo "::notice::[$DOMENA] nakon rješenja: svih $ukupno automatskih provjera PROŠLO"
+
+      - name: Početno stanje mora biti ispravno
+        if: steps.prije.outcome != 'success'
+        run: |
+          echo "::error::[$DOMENA] provjera početnog stanja nije uspjela (vidi korak 'Provjera – početno stanje')"
+          exit 1
 
       - name: Dnevnici (kod greške)
         if: failure()

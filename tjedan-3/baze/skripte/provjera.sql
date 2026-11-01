@@ -149,8 +149,8 @@ WHERE p.grantee_principal_id = 0 AND p.state IN ('G', 'W')
   AND ((p.class = 1 AND o.is_ms_shipped = 0) OR p.class = 3
        OR (p.class = 0 AND p.permission_name IN (N'SELECT', N'INSERT', N'UPDATE', N'DELETE', N'EXECUTE', N'CONTROL', N'ALTER')));
 SET @ok = CASE WHEN @s IS NULL THEN 1 ELSE 0 END;
-EXEC #dodaj 'Z3.4', N'Uloga public nema prava na korisničke objekte i sheme', @ok,
-    N'public = svi korisnici baze (i guest). Pronađeno: ' + ISNULL(@s, N'-') + N'. Koristite REVOKE … FROM public.';
+SET @s = N'public = svi korisnici baze (i guest). Pronađeno: ' + ISNULL(@s, N'-') + N'. Koristite REVOKE … FROM public.';
+EXEC #dodaj 'Z3.4', N'Uloga public nema prava na korisničke objekte i sheme', @ok, @s;
 
 /* ================= Z4 – RLS i maskiranje ================= */
 SET @ok = CASE WHEN EXISTS (SELECT 1 FROM sys.security_policies AS p
@@ -389,8 +389,9 @@ FROM sys.configurations
 WHERE name IN (N'xp_cmdshell', N'cross db ownership chaining', N'Ad Hoc Distributed Queries', N'clr enabled')
   AND CONVERT(INT, value_in_use) <> 0;
 SET @ok = CASE WHEN @s IS NULL THEN 1 ELSE 0 END;
+SET @s = N'Još uključeno: ' + ISNULL(@s, N'-') + N'. EXEC sp_configure N''<opcija>'', 0; RECONFIGURE;';
 EXEC #dodaj 'Z8.1', N'Rizične opcije poslužitelja su isključene (xp_cmdshell, cross db ownership chaining, Ad Hoc Distributed Queries, clr enabled)', @ok,
-    N'Još uključeno: ' + ISNULL(@s, N'-') + N'. EXEC sp_configure N''<opcija>'', 0; RECONFIGURE;';
+    @s;
 
 SELECT @ok = CASE WHEN is_trustworthy_on = 0 THEN 1 ELSE 0 END FROM sys.databases WHERE name = N'$(BAZA)';
 EXEC #dodaj 'Z8.2', N'TRUSTWORTHY je isključen za $(BAZA)', @ok,
