@@ -1,0 +1,26 @@
+{
+  "medtermin": {
+    "NAZIV": "MedTermin – naručivanje pregleda",
+    "OPIS": "Web aplikacija privatne poliklinike. Pacijenti pregledavaju liječnike i slobodne termine, naručuju se na pregled i otkazuju rezervacije, pregledavaju i preuzimaju svoje nalaze te ispisuju potvrdu rezervacije. Liječnici mogu uvesti raspored termina iz XML datoteke.",
+    "FUNKCIJE": "- popis liječnika sa sortiranjem i popis slobodnih termina\n- rezervacija pregleda (s napomenom i OIB-om), pregled i otkazivanje vlastitih rezervacija\n- pregled nalaza (JSON/PDF prikaz) i preuzimanje datoteke nalaza\n- HTML potvrda rezervacije za ispis\n- uvoz rasporeda termina iz XML-a (liječnik, administrator)\n- korisničke postavke obavijesti u YAML formatu\n- registracija, prijava (API i web obrazac), obnova zaboravljene lozinke e-mailom",
+    "PRIV_KORISNIK": "dr.horvat",
+    "PRIV_ULOGA": "LIJECNIK",
+    "PRIV_OPIS": "liječnik"
+  },
+  "ulaznica": {
+    "NAZIV": "Ulaznica – prodaja ulaznica",
+    "OPIS": "Web trgovina ulaznicama za koncerte i predstave. Kupci pregledavaju događaje, kupuju ulaznice, otkazuju narudžbe, preuzimaju račune i ispisuju ulaznice. Organizatori mogu uvesti nove događaje iz XML datoteke.",
+    "FUNKCIJE": "- popis događaja sa sortiranjem\n- kupnja ulaznica (ime na ulaznici, OIB za račun), pregled i storniranje vlastitih narudžbi\n- pregled računa (JSON/PDF prikaz) i preuzimanje datoteke računa\n- HTML ulaznica za ispis\n- uvoz događaja iz XML-a (organizator, administrator)\n- korisničke postavke obavijesti u YAML formatu\n- registracija, prijava (API i web obrazac), obnova zaboravljene lozinke e-mailom",
+    "PRIV_KORISNIK": "organizator",
+    "PRIV_ULOGA": "ORGANIZATOR",
+    "PRIV_OPIS": "organizator događaja"
+  },
+  "kadrovska": {
+    "NAZIV": "Kadrovska – HR portal",
+    "OPIS": "Interni HR portal tvrtke. Zaposlenici pregledavaju imenik, podnose i povlače zahtjeve za godišnji odmor, pregledavaju i preuzimaju platne liste te se prijavljuju na interne edukacije. Voditelji mogu uvesti nove edukacije iz XML datoteke.",
+    "FUNKCIJE": "- imenik zaposlenika sa sortiranjem\n- zahtjevi za godišnji odmor (razlog, OIB), pregled i povlačenje vlastitih zahtjeva\n- pregled platnih lista (JSON/PDF prikaz) i preuzimanje datoteke platne liste\n- prijava na edukacije s ograničenim brojem mjesta\n- HTML potvrda zahtjeva za ispis\n- uvoz edukacija iz XML-a (voditelj, administrator)\n- korisničke postavke obavijesti u YAML formatu\n- registracija, prijava (API i web obrazac), obnova zaboravljene lozinke e-mailom",
+    "PRIV_KORISNIK": "voditelj",
+    "PRIV_ULOGA": "VODITELJ",
+    "PRIV_OPIS": "voditelj odjela"
+  }
+}
