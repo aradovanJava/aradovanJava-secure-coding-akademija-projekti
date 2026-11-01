@@ -1,0 +1,5 @@
+# Skripte se izvršavaju u Linux kontejneru – uvijek LF.
+*.sh  text eol=lf
+*.sql text eol=lf
+*.yml text eol=lf
+.env.primjer text eol=lf

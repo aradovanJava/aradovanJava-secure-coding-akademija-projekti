@@ -1,0 +1,117 @@
+name: t3-baze
+# Laboratorij "Sigurnost baza podataka" (3. tjedan): za svaku domenu
+#   početno stanje -> sve automatske provjere PALO; referentno rješenje -> sve PROŠLO.
+on:
+  push:
+    branches: [main]
+    paths: ['tjedan-3/baze/**', '.github/workflows/t3-baze.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: t3-baze-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Paket za polaznike
+        run: |
+          bash tjedan-3/baze/napravi-zip.sh
+          if unzip -l tjedan-3/baze/dist/sigurnost-baza-podataka.zip | grep -q 'rjesenje'; then
+            echo "::error::ZIP sadrži rješenje!"; exit 1
+          fi
+          echo "::notice::ZIP za polaznike je izgrađen (bez rjesenje/)."
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sigurnost-baza-podataka
+          path: tjedan-3/baze/dist/sigurnost-baza-podataka.zip
+          retention-days: 14
+
+  baza:
+    name: baza (${{ matrix.domena }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        domena: [medtermin, ulaznica, kadrovska]
+    defaults:
+      run:
+        working-directory: tjedan-3/baze
+    env:
+      DOMENA: ${{ matrix.domena }}
+      # Provjere koje smiju proći već u početnom stanju (razmakom odvojene oznake, npr. "Z8.1").
+      DOPUSTENO_NA_POCETKU: ''
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Priprema .env i tajni
+        run: |
+          SA="Sa_$(openssl rand -hex 10)Q1"
+          APPL="App_$(openssl rand -hex 10)Q1"
+          ADM="Adm_$(openssl rand -hex 10)Q1"
+          KLJ="Klj_$(openssl rand -hex 10)Q1"
+          for v in "$SA" "$APPL" "$ADM" "$KLJ"; do echo "::add-mask::$v"; done
+          { echo "SA=$SA"; echo "APPL=$APPL"; echo "ADM=$ADM"; echo "KLJ=$KLJ"; } >> "$GITHUB_ENV"
+          cp .env.primjer .env
+          sed -i "s/^DOMENA=.*/DOMENA=$DOMENA/; s/^MSSQL_SA_PASSWORD=.*/MSSQL_SA_PASSWORD=$SA/" .env
+          docker compose config --quiet
+
+      - name: SQL Server + init
+        run: |
+          docker compose up -d sql
+          docker compose run --rm -T init
+
+      - name: Provjera – početno stanje (očekujemo PALO)
+        run: |
+          docker compose --profile provjera run --rm -T provjera | tee prije.txt
+          ukupno=$(grep -c '^REZULTAT|' prije.txt || true)
+          [ "$ukupno" -gt 0 ] || { echo "::error::[$DOMENA] provjera nije ispisala rezultate"; exit 1; }
+          echo "UKUPNO=$ukupno" >> "$GITHUB_ENV"
+          greske=0
+          while IFS='|' read -r _ oznaka status; do
+            status="${status%%[[:space:]]*}"
+            if [ "$status" != "PALO" ] && [[ " $DOPUSTENO_NA_POCETKU " != *" $oznaka "* ]]; then
+              echo "::error::[$DOMENA] $oznaka prolazi već u početnom stanju"; greske=$((greske+1))
+            fi
+          done < <(grep '^REZULTAT|' prije.txt)
+          echo "::notice::[$DOMENA] početno stanje: $ukupno automatskih provjera, neočekivanih prolaza: $greske"
+          [ "$greske" -eq 0 ]
+
+      - name: Referentno rješenje
+        run: |
+          docker compose cp "rjesenje/$DOMENA.sql" sql:/tmp/rjesenje.sql
+          docker compose exec -T -e SQLCMDPASSWORD="$SA" sql /opt/mssql-tools18/bin/sqlcmd \
+            -C -S localhost -U sa -b -I -f 65001 -i /tmp/rjesenje.sql \
+            -v APP_LOZINKA="$APPL" ADMIN_LOZINKA="$ADM" KLJUC_LOZINKA="$KLJ"
+
+      - name: Novi administrator u .env, ponovno pokretanje
+        run: |
+          sed -i "s/^ADMIN_LOGIN=.*/ADMIN_LOGIN=dba_admin/; s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=$ADM/" .env
+          docker compose up -d sql
+
+      - name: Provjera – nakon rješenja (očekujemo PROŠLO)
+        run: |
+          docker compose --profile provjera run --rm -T provjera | tee poslije.txt
+          ukupno=$(grep -c '^REZULTAT|' poslije.txt || true)
+          palo=$(grep -c '^REZULTAT|.*|PALO' poslije.txt || true)
+          {
+            echo "### $DOMENA"
+            echo '```'
+            sed -n '/^Zadatak/,/^Ukupno/p' poslije.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep '^REZULTAT|.*|PALO' poslije.txt | while IFS='|' read -r _ oznaka _; do
+            echo "::error::[$DOMENA] $oznaka i dalje PALO nakon referentnog rješenja"
+          done
+          if [ "$ukupno" -ne "$UKUPNO" ]; then echo "::error::[$DOMENA] broj provjera $ukupno ≠ $UKUPNO"; exit 1; fi
+          if [ "$palo" -ne 0 ]; then exit 1; fi
+          echo "::notice::[$DOMENA] nakon rješenja: svih $ukupno automatskih provjera PROŠLO"
+
+      - name: Dnevnici (kod greške)
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail 200 sql init

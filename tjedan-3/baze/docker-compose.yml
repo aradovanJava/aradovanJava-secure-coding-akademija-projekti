@@ -1,0 +1,80 @@
+# Laboratorij 3. tjedna: Sigurnost baza podataka (SQL Server 2022 Developer)
+# Pokretanje:   docker compose up -d
+# Provjera:     docker compose --profile provjera run --rm provjera
+# Reset:        docker compose down -v   (pa ispraznite ./backup i ./audit)
+name: sigurnost-baza
+
+x-mssql-slika: &slika
+  image: mcr.microsoft.com/mssql/server:2022-latest
+  # Slika postoji samo za amd64; na Apple Siliconu uključite Rosettu u Docker Desktopu.
+  platform: linux/amd64
+
+x-okruzenje: &okruzenje
+  DOMENA: ${DOMENA:-medtermin}
+  MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Postavite MSSQL_SA_PASSWORD u datoteci .env (kopija .env.primjer)}
+  ADMIN_LOGIN: ${ADMIN_LOGIN:-sa}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+
+services:
+  # Jednokratno: mape ./backup i ./audit moraju biti zapisive korisniku mssql (uid 10001) u kontejneru.
+  dozvole:
+    <<: *slika
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c", "chmod 0777 /var/opt/mssql/backup /var/opt/mssql/audit && echo 'Dozvole za ./backup i ./audit su postavljene.'"]
+    volumes:
+      - ./backup:/var/opt/mssql/backup
+      - ./audit:/var/opt/mssql/audit
+    restart: "no"
+
+  sql:
+    <<: *slika
+    hostname: sql
+    environment:
+      <<: *okruzenje
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+    ports:
+      # Samo lokalno računalo – poslužitelj nije dostupan s mreže.
+      - "127.0.0.1:${SQL_PORT:-1433}:1433"
+    volumes:
+      - podaci:/var/opt/mssql
+      - ./backup:/var/opt/mssql/backup
+      - ./audit:/var/opt/mssql/audit
+    depends_on:
+      dozvole:
+        condition: service_completed_successfully
+    healthcheck:
+      # Koristi ADMIN_LOGIN/ADMIN_PASSWORD (zadano: sa / MSSQL_SA_PASSWORD).
+      test: ["CMD-SHELL", "SQLCMDPASSWORD=\"$${ADMIN_PASSWORD:-$$MSSQL_SA_PASSWORD}\" /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U \"$${ADMIN_LOGIN:-sa}\" -l 5 -b -Q \"SELECT 1\" -o /dev/null"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 20
+
+  # Jednokratno: stvara bazu odabrane domene (samo ako još ne postoji).
+  init:
+    <<: *slika
+    environment: *okruzenje
+    entrypoint: ["/bin/bash", "/skripte/init.sh"]
+    volumes:
+      - ./skripte:/skripte:ro
+    depends_on:
+      sql:
+        condition: service_healthy
+    restart: "no"
+
+  # Automatska provjera zadataka: docker compose --profile provjera run --rm provjera
+  provjera:
+    <<: *slika
+    profiles: ["provjera"]
+    environment: *okruzenje
+    entrypoint: ["/bin/bash", "/skripte/provjera.sh"]
+    volumes:
+      - ./skripte:/skripte:ro
+    depends_on:
+      sql:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  podaci:

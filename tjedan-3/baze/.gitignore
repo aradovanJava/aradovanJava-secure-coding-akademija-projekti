@@ -1,0 +1,6 @@
+.env
+dist/
+backup/*
+!backup/.gitkeep
+audit/*
+!audit/.gitkeep
