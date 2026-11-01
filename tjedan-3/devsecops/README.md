@@ -23,7 +23,7 @@ ci/zap_hooks.py  ci/dast-putanje.txt   prijava i ciljane provjere za ZAP
 
 ```bash
 cd moj-projekt              # korijen repozitorija = mapa s pom.xml (ili *.sln)
-cp -r <akademija>/tjedan-3/devsecops/java/. .      # ili .../dotnet/.
+cp -r <raspakirani-paket>/devsecops/java/. .      # ili .../devsecops/dotnet/.
 git add .github ci .semgrepignore .gitleaks.toml osv-scanner.toml
 git commit -m "DevSecOps cjevovod" && git push
 ```
@@ -88,8 +88,8 @@ prije spajanja u `main`. Zato: vrata ne smiju biti „samo upozorenje”, iznimk
 opći alati ne vide pišemo **vlastita pravila** (`ci/semgrep/regresije.yml`) i zadržavamo **sigurnosne testove** iz T2
 u build poslu.
 
-Predložak je testiran (`.github/workflows/t3-devsecops.yml`) na MedTerminu u dva stanja: **svi propusti popravljeni**
-(vrata prolaze, uz dokumentirane iznimke iz `test/prihvaceno-*.txt`) i **svih 13 propusta prisutno** (vrata padaju):
+Predložak je testiran na MedTerminu u dva stanja: **svi propusti popravljeni** (vrata prolaze, uz nekoliko uskih,
+obrazloženih iznimaka u `ci/prihvaceno.txt`) i **svih 13 propusta prisutno** (vrata padaju):
 
 | T2 propust | Java – tko ga hvata | .NET – tko ga hvata |
 |---|---|---|
