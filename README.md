@@ -1,14 +1,14 @@
 # Secure Coding akademija – Tjedan 2: samostalni projekti (PRIVATNO – samo za nastavnike)
 
-Ovaj repozitorij sadrži predloške projekata za **15 varijanti** (3 domene × Java i .NET), **skrivene testove** za
+Ovaj repozitorij sadrži predloške projekata za **15 varijanti** (3 domene; svaka u Javi, .NET-u i Pythonu), **skrivene testove** za
 ocjenjivanje, savjete i alate. Polaznici ga **ne smiju vidjeti** – svaki dobiva samo ZIP svoje varijante na Moodleu.
 
 | Mapa / datoteka | Sadržaj |
 |---|---|
 | `SPEC_T2.md` | specifikacija: domene, 13 ranjivih mjesta (S01–S13), skriveni testovi |
 | `variants.json` | raspodjela V01–V15: domena + 9 ranjivih mjesta |
-| `templates/<java\|dotnet>/<domena>/` | predlošci s markerima `@@VULN` / `@@SECURE` |
-| `hidden-tests/<java\|dotnet>/<domena>/` | skriveni testovi (po jedan ili više po mjestu) |
+| `templates/<java\|dotnet\|python>/<domena>/` | predlošci s markerima `@@VULN` / `@@SECURE` |
+| `hidden-tests/<java\|dotnet\|python>/<domena>/` | skriveni testovi (po jedan ili više po mjestu) |
 | `student-docs/` | upute i predlošci koji ulaze u ZIP polaznika (README, alati, izvještaj, STRIDE, ASVS) |
 | `tools/generate.py` | generiranje varijanti i ZIP paketa za polaznike |
 | `tools/ocijeni.py` | ocjenjivanje predaje skrivenim testovima |
@@ -52,6 +52,9 @@ ocjenjivanje, savjete i alate. Polaznici ga **ne smiju vidjeti** – svaki dobiv
 Domene: **medtermin** (V01–V05, naručivanje pregleda), **ulaznica** (V06–V10, prodaja ulaznica),
 **kadrovska** (V11–V15, HR portal). Svaka varijanta ima 9 ranjivih i 4 ispravno napisana mjesta.
 
+Polaznik u ZIP-u svoje varijante dobiva sve tri tehnologije (`java/`, `dotnet/`, `python/`) i odabire jednu:
+Spring Boot 3.5 (Java 21), ASP.NET Core (.NET 10) ili FastAPI (Python 3.12+). Ranjiva mjesta su ista u sve tri.
+
 ## 1. Paketi za polaznike
 
 ```bash
@@ -76,7 +79,7 @@ Korištenje savjeta vidi se u *Izvještaji → Zapisnici* (događaj „Pregled m
 **U GitHub Actions (bez lokalne instalacije):** ZIP predaje stavi u `predaje/`, commit + push, zatim
 *Actions → ocijeni → Run workflow* (naziv datoteke ili `*` za sve). Izvještaj je u sažetku pokretanja i u artefaktu.
 
-**Lokalno** (Python 3.9+, JDK 21 i/ili .NET 10 SDK):
+**Lokalno** (Python 3.9+ za alate; za predaje: JDK 21, .NET 10 SDK odnosno Python 3.12+):
 ```bash
 python3 tools/ocijeni.py --predaja predaje/V07-Ime-Prezime.zip
 ```
@@ -87,5 +90,5 @@ savjeta; usklađenost (ASVS, STRIDE) i izvještaj ocjenjuješ ručno.
 
 ## 4. Provjera svih varijanti
 
-*Actions → verify → Run workflow* – za svaku od 15 varijanti u oba stacka provjerava da skriveni testovi padaju
+*Actions → verify → Run workflow* – za svaku od 15 varijanti u sva tri stacka (Java, .NET, Python) provjerava da skriveni testovi padaju
 točno za ranjiva mjesta, a funkcionalni testovi prolaze. Pokreni nakon svake izmjene predložaka.

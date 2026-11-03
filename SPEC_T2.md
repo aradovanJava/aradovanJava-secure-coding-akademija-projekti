@@ -1,5 +1,5 @@
 # Secure Coding akademija – Tjedan 2: samostalni projekt
-# OBVEZUJUĆA specifikacija projekata, varijanti i skrivenih testova (Java/Spring + C#/.NET)
+# OBVEZUJUĆA specifikacija projekata, varijanti i skrivenih testova (Java/Spring + C#/.NET + Python/FastAPI)
 
 ## 0. Kontekst i svrha (pročitaj prvo)
 
@@ -11,7 +11,7 @@ za svaku napisati jedinični test. Ocjenjuje se **skrivenim testovima** koje ima
 
 Pravila koja vrijede za SVE što izrađuješ:
 - Aplikacije rade isključivo **lokalno** (localhost, in-memory baza). Nema stvarnih vanjskih poziva.
-- Skriveni testovi su **obični jedinični/integracijski testovi** (JUnit 5 / xUnit) koji provjeravaju da je
+- Skriveni testovi su **obični jedinični/integracijski testovi** (JUnit 5 / xUnit / pytest) koji provjeravaju da je
   ispravljena aplikacija otporna. Ne izrađuj samostalne napadačke alate, skripte za masovno slanje zahtjeva,
   generatore payloada ni upute za napad na tuđe sustave. Testni „payloadi” su minimalni i bezopasni
   (npr. XXE čita **kanarinac datoteku koju je test sam stvorio** u privremenoj mapi).
@@ -34,10 +34,12 @@ aradovanJava-secure-coding-akademija-projekti/
 │  └─ ocijeni.py                 # ocjenjivanje predaje polaznika (nastavnik, lokalno)
 ├─ templates/
 │  ├─ java/{medtermin,ulaznica,kadrovska}/     # Maven projekt s markerima
-│  └─ dotnet/{medtermin,ulaznica,kadrovska}/   # .NET solution s markerima
+│  ├─ dotnet/{medtermin,ulaznica,kadrovska}/   # .NET solution s markerima
+│  └─ python/{medtermin,ulaznica,kadrovska}/   # FastAPI projekt s markerima
 ├─ hidden-tests/
 │  ├─ java/{domena}/java/hr/span/akademija/{domena}/skriveno/*.java   # kopira se na src/test/
-│  └─ dotnet/{domena}/Skriveno/*.cs                                    # kopira se na tests/<Domena>.Tests/
+│  ├─ dotnet/{domena}/Skriveno/*.cs                                    # kopira se na tests/<Domena>.Tests/
+│  └─ python/{domena}/skriveno/test_sXX_*.py                           # kopira se na tests/
 ├─ student-docs/                 # zajedničke upute za polaznike (piše nastavnik/Claude)
 └─ .github/workflows/{dev.yml,verify.yml}
 ```
@@ -74,6 +76,8 @@ String column = SORT_COLUMNS.get(sort);
 // @@END S08
 ```
 - Java/C#/JS: `// @@VULN Sxx`, `// @@SECURE Sxx`, `// @@END Sxx`
+- Python, requirements*.txt, TOML: `# @@VULN Sxx` itd. (uvlaka markera je proizvoljna; prazne retke rasporedi tako
+  da obje grane imaju uredan PEP 8 razmak)
 - XML (pom.xml, .csproj, .config): `<!-- @@VULN Sxx -->` itd.
 - properties / YAML / .http / shell: `# @@VULN Sxx` itd.
 - JSON (`appsettings*.json`) – ASP.NET Core konfiguracija dopušta `//` komentare, smiju se koristiti.
@@ -139,13 +143,38 @@ uvjerljiva greška programera, sigurna grana kao uredan kod. Ne zovi metode/vari
   idu u `hidden-tests/dotnet/<domena>/Skriveno/S01….cs` …; namespace `<Domena>.Tests.Skriveno`), klase `S01…Tests`, `[Trait("Category","Skriveno")]`,
   `[Trait("Slot","S01")]`; vlastita bazna klasa / factory u istoj mapi.
 
+### 3.2a Python (po domeni jedan samostalan projekt)
+- **Python 3.12+**, **FastAPI** 0.162 + uvicorn, `sqlite3` (bez ORM-a). Port **8000** (`127.0.0.1`). Paket
+  `<domena>/` u korijenu projekta; pokretanje `python -m <domena>`, `run.py` ili `uvicorn <domena>.main:app`.
+  Tvornica `<domena>.app.create_app(postavke: Postavke | None) -> FastAPI` – svaki poziv dobiva **svježu bazu**
+  (jedna SQLite veza na `:memory:`, `check_same_thread=False`, `isolation_level=None`, zaštićena `RLock`-om, uz
+  `transakcija()` context manager) i vlastito spremište tokena. `app.state.baza` (skriveni test S07 čita
+  `korisnici`), `app.state.kontekst` (servisi). Endpointi su obični `def` (threadpool) pa je S10 stvarna utrka.
+- Ovisnosti zaključane u `requirements.txt` / `requirements-dev.txt` (pytest, pytest-cov, httpx2 za
+  TestClient, bandit, ruff, pip-audit, cyclonedx-bom). `pyproject.toml`: pytest `testpaths=["tests"]`,
+  `pythonpath=["."]`, markeri `funkcionalno`, `primjer` (bez `--strict-markers`); `[tool.coverage.run] source`;
+  ruff s pravilima `S` (Bandit); `[tool.bandit] exclude_dirs = ["tests"]`.
+- Logiranje modulom `logging`, loggeri `<domena>.…` (skriveni S12 koristi pytest `caplog`).
+- Javni testovi: `tests/conftest.py` (fixture `mape`, `app`, `client`, `prijava`, `novi_korisnik`; svaki test
+  dobiva svježu aplikaciju), `tests/funkcionalno/test_*.py` (`pytestmark = pytest.mark.funkcionalno`),
+  `tests/primjer/test_primjer_sigurnosnog_testa.py` (`pytest.mark.primjer`).
+- Skriveni testovi: `hidden-tests/python/<domena>/skriveno/` se kopira na `tests/skriveno/`: `__init__.py`,
+  vlastiti `conftest.py` (fixture `sk_*`, uključivo `sk_posluzitelj` – stvarni uvicorn na slobodnom portu za S10),
+  moduli `test_s01_<opis>.py` … `test_s13_<opis>.py` s običnim funkcijama (bez klasa – `check_results.py`
+  oznaku slota čita iz imena modula).
+- Slotovi u Pythonu: S05 `lxml` (`XMLParser(load_dtd=True, resolve_entities=True)` ↔ bez DTD-a/entiteta +
+  odbijanje DOCTYPE), S06 PyYAML **5.3.1** (CVE-2020-14343) + `yaml.load(..., Loader=FullLoader)` ↔ **6.0.3** +
+  `yaml.safe_load` (test: verzija ≥ 5.4 u `requirements.txt` i instalirana, te tag
+  `!!python/object/new:builtins.str` → 400), S07 `hashlib.sha256` ↔ `argon2-cffi` `PasswordHasher`,
+  S11 `md5(username + date.today().isoformat())` ↔ `secrets.token_urlsafe(32)` + SHA-256 u bazi.
+
 ### 3.3 Konfiguracija koju testovi smiju mijenjati (stabilno sučelje – ne mijenjaj nazive)
-| Ključ | Java (`application.properties`) | .NET (`appsettings.json`) | Zadano |
-|---|---|---|---|
-| mapa s dokumentima | `app.storage-dir` | `App:StorageDir` | `./data/dokumenti` |
-| mapa sa „poslanim e-mailovima” | `app.mailbox-dir` | `App:MailboxDir` | `./data/posta` |
-| dopušteni CORS origin(i) | `app.cors.allowed-origins` | `App:Cors:AllowedOrigins` (niz) | `http://localhost:5173` |
-| baza | `spring.datasource.url` | `ConnectionStrings:Default` | in-memory |
+| Ključ | Java (`application.properties`) | .NET (`appsettings.json`) | Python (`Postavke` / okruženje) | Zadano |
+|---|---|---|---|---|
+| mapa s dokumentima | `app.storage-dir` | `App:StorageDir` | `storage_dir` / `APP_STORAGE_DIR` | `./data/dokumenti` |
+| mapa sa „poslanim e-mailovima” | `app.mailbox-dir` | `App:MailboxDir` | `mailbox_dir` / `APP_MAILBOX_DIR` | `./data/posta` |
+| dopušteni CORS origin(i) | `app.cors.allowed-origins` | `App:Cors:AllowedOrigins` (niz) | `cors_allowed_origins` / `APP_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` |
+| baza | `spring.datasource.url` | `ConnectionStrings:Default` | (uvijek `:memory:`) | in-memory |
 
 Pri startu aplikacija **stvara** mape i seed datoteke (dokumente iz §5) ako ne postoje.
 
@@ -407,7 +436,7 @@ smije biti samo kratki `KAKO-POKRENUTI.md` (pokretanje, testovi, korisnici) – 
   4. all-secure: **svi** skriveni testovi **prolaze**,
   5. generator lint mora proći.
   Rezultat: `::notice::` sažetak po slotu („S08: all-vuln PADA 3/3, all-secure PROLAZI 3/3”) + `::error::` za odstupanja.
-- `verify.yml` (workflow_dispatch): matrica 15 varijanti × 2 stacka – za svaku varijantu očekivano: skriveni
+- `verify.yml` (workflow_dispatch): matrica 15 varijanti × 3 stacka – za svaku varijantu očekivano: skriveni
   testovi ranjivih slotova padaju, ostali prolaze, funkcionalni prolaze.
 - Rezultate čitaj s `gh run list -R aradovanJava/aradovanJava-secure-coding-akademija-projekti` i
   `gh api repos/aradovanJava/aradovanJava-secure-coding-akademija-projekti/check-runs/<job_id>/annotations`.
