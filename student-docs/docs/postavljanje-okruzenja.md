@@ -1,7 +1,7 @@
 # Postavljanje okruženja – projekt {{VARIJANTA}}
 
 Raspakiraj ZIP u mapu bez razmaka i dijakritika u putanji (npr. `C:\projekti\{{VARIJANTA}}` ili `~/projekti/{{VARIJANTA}}`).
-Odaberi **jednu** tehnologiju: `java/` ili `dotnet/`. Preporuka: odmah inicijaliziraj lokalni Git repozitorij
+Odaberi **jednu** tehnologiju: `java/`, `dotnet/` ili `python/`. Preporuka: odmah inicijaliziraj lokalni Git repozitorij
 (`git init`, prvi commit = izvorno stanje) – tako lako uspoređuješ promjene i pokazuješ popravke.
 
 ## Java (mapa `java/`)
@@ -45,6 +45,36 @@ Odaberi **jednu** tehnologiju: `java/` ili `dotnet/`. Preporuka: odmah inicijali
   dotnet test --collect:"XPlat Code Coverage"              # pokrivenost (coverage.cobertura.xml u TestResults/)
   ```
 
+## Python (mapa `python/`)
+
+| Alat | Verzija | Provjera |
+|---|---|---|
+| Python | 3.12 ili noviji (python.org; na Windowsu označi *Add python.exe to PATH*) | `python --version` |
+| IDE | PyCharm ili VS Code + *Python* + *REST Client* | |
+
+Ovisnosti se instaliraju u **virtualno okruženje** u mapi `python/`:
+
+```bash
+python -m venv .venv
+# Windows (PowerShell):  .\.venv\Scripts\Activate.ps1      Linux/macOS:  source .venv/bin/activate
+pip install -r requirements-dev.txt
+```
+
+- **PyCharm:** *File → Open…* → mapa `python/`; *Settings → Project → Python Interpreter → Add Interpreter →
+  Add Local Interpreter → Virtualenv* (postojeći `.venv` ili novi). Pokretanje: desni klik na `run.py` → *Run*.
+  Testovi: *Settings → Tools → Python Integrated Tools → Default test runner = pytest*, zatim desni klik na `tests` → *Run*.
+- **VS Code:** *Open Folder…* → `python/`; *Python: Select Interpreter* → `.venv`; pokretanje iz *Run and Debug*
+  (konfiguracija je u `.vscode/launch.json`), testovi u *Testing* panelu, zahtjevi iz `http/{{DOMENA}}.http` (REST Client).
+- **Naredbeni redak** (u mapi `python/`, s aktivnim `.venv`):
+  ```bash
+  python -m {{DOMENA}}                     # aplikacija na http://localhost:8000 (Swagger UI: /docs)
+  pytest                                   # svi testovi
+  pytest -m funkcionalno                   # samo funkcionalni testovi
+  pytest tests/sigurnost -v                # tvoji testovi
+  pytest --cov --cov-report=html           # pokrivenost koda (izvještaj u htmlcov/index.html)
+  ```
+  Na Windowsu, ako PowerShell ne dopušta aktivaciju: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
 ## Provjera da sve radi
 
 1. `GET http://localhost:<port>/api/health` → `{"status":"UP"}`
@@ -55,7 +85,8 @@ Odaberi **jednu** tehnologiju: `java/` ili `dotnet/`. Preporuka: odmah inicijali
 
 | Problem | Rješenje |
 |---|---|
-| Port 8080/5080 je zauzet | Zatvori proces koji ga koristi ili promijeni port (`server.port` / `launchSettings.json`) samo lokalno. |
+| Port 8080/5080/8000 je zauzet | Zatvori proces koji ga koristi ili promijeni port (`server.port` / `launchSettings.json` / varijabla okoline `PORT`) samo lokalno. |
 | IntelliJ ne vidi JDK 21 | *Project Structure → SDK → Add SDK → Download JDK → 21*. |
 | `dotnet` ne pronalazi SDK 10 | Instaliraj .NET 10 SDK; `global.json` traži 10.0.x. |
-| Proxy/firewall blokira preuzimanje ovisnosti | Postavi proxy za Maven (`~/.m2/settings.xml`) ili NuGet (`nuget.config`). |
+| Proxy/firewall blokira preuzimanje ovisnosti | Postavi proxy za Maven (`~/.m2/settings.xml`), NuGet (`nuget.config`) ili pip (`pip install --proxy …`). |
+| `pip install` javlja grešku pri izgradnji paketa | Nadogradi pip (`python -m pip install --upgrade pip`) i provjeri da koristiš Python 3.12+ iz `.venv`. |

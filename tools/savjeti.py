@@ -67,13 +67,14 @@ R2 = {
            "Dopusti samo lokalne putanje (jedan početni <code>/</code>), a sve ostalo preusmjeri na <code>/</code>.",
     "S04": "Pošalji <code>GET /api/ja</code> i <code>OPTIONS /api/ja</code> sa zaglavljem <code>Origin: https://primjer.example</code>. "
            "Što je u <code>Access-Control-Allow-Origin</code> i <code>Access-Control-Allow-Credentials</code>? "
-           "Dopušteni origini trebaju doći iz konfiguracije (ključ <code>cors.allowed-origins</code> / <code>Cors:AllowedOrigins</code>).",
+           "Dopušteni origini trebaju doći iz konfiguracije (ključ <code>cors.allowed-origins</code> / <code>Cors:AllowedOrigins</code> / "
+           "<code>cors_allowed_origins</code> u Pythonu).",
     "S05": "Parser obrađuje <code>DOCTYPE</code> deklaracije. Što ako uvezeni dokument definira entitet koji upućuje na "
            "lokalnu datoteku, a ta se vrijednost vraća u odgovoru uvoza? Isključi DTD/vanjske entitete u postavkama parsera "
            "i odbij takav dokument (400).",
     "S06": "Biblioteka kojom se parsira YAML u <code>POST /api/postavke</code> ima javno objavljenu ranjivost (CVE/GHSA). "
-           "Nadogradi je na sigurnu verziju i provjeri treba li promijeniti i način korištenja (siguran konstruktor / "
-           "deserijalizacija samo u jednostavne tipove). Ponovno pokreni SCA alat.",
+           "Nadogradi je na sigurnu verziju i provjeri treba li promijeniti i način korištenja (siguran konstruktor / sigurno "
+           "učitavanje / deserijalizacija samo u jednostavne tipove). Ponovno pokreni SCA alat.",
     "S07": "Registriraj dva korisnika s istom lozinkom i usporedi <code>password_hash</code> u bazi. Jesu li isti? "
            "Brza hash funkcija bez soli nije prikladna za lozinke – koristi bcrypt, PBKDF2 ili Argon2 (i za početne korisnike).",
     "S08": "Parametri <code>sort</code> i <code>smjer</code> ugrađuju se u <code>ORDER BY</code>. Isprobaj vrijednost koja "
@@ -91,7 +92,8 @@ R2 = {
     "S12": "Pokreni aplikaciju, prijavi se, {stvori} s OIB-om i pokušaj se prijaviti pogrešnom lozinkom – zatim pročitaj izlaz "
            "konzole. Lozinke se nikad ne logiraju, OIB samo maskiran, a neuspjela prijava mora ostaviti zapis upozorenja.",
     "S13": "Kao <code>marko</code> dohvati {tudi_dok} s nepostojećim formatom (npr. <code>format=xml</code>). Pogledaj blok "
-           "<code>try/catch</code> u kojem se provjerava pristup – što se izvršava nakon iznimke? Pravilo: zadano odbij, "
+           "<code>try/catch</code> (u Pythonu <code>try/except</code>) u kojem se provjerava pristup – što se izvršava nakon "
+           "iznimke? Pravilo: zadano odbij, "
            "prvo provjeri vlasništvo, nepoznat format → 400, bez detalja iznimke u odgovoru.",
 }
 

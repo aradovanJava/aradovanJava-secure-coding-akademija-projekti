@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       pairs:
-        description: 'Parovi, npr. "java/medtermin dotnet/ulaznica" (prazno = svi)'
+        description: 'Parovi, npr. "java/medtermin python/ulaznica" (prazno = svi)'
         required: false
         default: ''
 jobs:
@@ -47,6 +47,12 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
+      - if: startsWith(matrix.pair, 'python/')
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: 'templates/python/**/requirements*.txt'
       - name: Provjera ${{ matrix.pair }}
         run: |
           pair='${{ matrix.pair }}'

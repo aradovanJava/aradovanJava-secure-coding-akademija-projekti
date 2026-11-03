@@ -21,8 +21,9 @@ def classify(classname, name):
     low = full.lower()
     if ".skriveno." in low:
         simple = classname.split(".")[-1]
-        m = re.match(r"(S\d\d)", simple)
-        return ("skriveno", m.group(1) if m else None)
+        # Java/.NET: klasa S01…Test(s); Python: modul test_s01_….py
+        m = re.match(r"(?:test_?)?[Ss](\d\d)", simple)
+        return ("skriveno", f"S{m.group(1)}" if m else None)
     if ".funkcionalno." in low:
         return ("funkcionalno", None)
     if ".primjer." in low:

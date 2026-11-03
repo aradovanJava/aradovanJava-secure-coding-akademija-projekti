@@ -15,12 +15,13 @@ Funkcionalnosti:
 
 {{FUNKCIJE}}
 
-Ista aplikacija postoji u dvije tehnologije – **odaberi jednu** i radi samo u njoj:
+Ista aplikacija postoji u tri tehnologije – **odaberi jednu** i radi samo u njoj:
 
 | Mapa | Tehnologija | Port | Pokretanje |
 |---|---|---|---|
 | `java/` | Java 21, Spring Boot 3.5, Maven (wrapper), H2 | 8080 | `./mvnw spring-boot:run` |
 | `dotnet/` | C#, .NET 10, ASP.NET Core, SQLite | 5080 | `dotnet run --project src/{{DOMENA_KLASA}}.Api` |
+| `python/` | Python 3.12+, FastAPI, SQLite | 8000 | `python -m {{DOMENA}}` (u virtualnom okruženju) |
 
 Baza je u memoriji i puni se početnim podacima pri svakom pokretanju. „E-pošta” (npr. za obnovu lozinke) se ne
 šalje, nego sprema kao datoteka u `data/posta/`. Detalji: [`docs/postavljanje-okruzenja.md`](docs/postavljanje-okruzenja.md)
@@ -44,7 +45,7 @@ U aplikaciju je namjerno ugrađeno **9 sigurnosnih ranjivosti** iz različitih k
 Dijelovi aplikacije koji nisu ranjivi napisani su ispravno – **ne „popravljaj” ono što nije pokvareno**, i svaki
 nalaz potkrijepi dokazom.
 
-1. **Postavi okruženje** i pokreni aplikaciju i postojeće testove (`./mvnw test` / `dotnet test`) – funkcionalni
+1. **Postavi okruženje** i pokreni aplikaciju i postojeće testove (`./mvnw test` / `dotnet test` / `pytest`) – funkcionalni
    testovi moraju prolaziti.
 2. **Model prijetnji** – opiši aplikaciju (akteri, komponente, granice povjerenja, imovina) i prođi kroz STRIDE
    ([`docs/model-prijetnji-predlozak.md`](docs/model-prijetnji-predlozak.md)).
@@ -59,16 +60,16 @@ nalaz potkrijepi dokazom.
 5. **Usklađenost sa standardom** – ispuni [`docs/asvs-kontrolna-lista.md`](docs/asvs-kontrolna-lista.md)
    (odabrani zahtjevi OWASP ASVS 5.0.0) za stanje **prije** i **poslije** popravaka.
 6. **Izvještaj** – [`docs/izvjestaj-predlozak.md`](docs/izvjestaj-predlozak.md) ili `izvjestaj-predlozak.docx`.
-7. Izmjeri **pokrivenost koda testovima** (JaCoCo / coverlet – upute u `docs/alati.md`).
+7. Izmjeri **pokrivenost koda testovima** (JaCoCo / coverlet / pytest-cov – upute u `docs/alati.md`).
 
 ## 3. Pravila
 
 - **Ne mijenjaj javno sučelje** aplikacije: URL-ove, nazive polja u JSON-u, nazive konfiguracijskih ključeva i
   tablica u bazi. Ocjenjivanje ih koristi. Smiješ dodavati nove klase, metode, ovisnosti i konfiguraciju.
-- **Funkcionalni testovi** (paket/mapa `funkcionalno` / `Funkcionalno`) se **ne mijenjaju** i moraju prolaziti –
+- **Funkcionalni testovi** (paket/mapa `funkcionalno` / `Funkcionalno`, u Pythonu `tests/funkcionalno/`) se **ne mijenjaju** i moraju prolaziti –
   popravak ne smije ukloniti ni pokvariti funkcionalnost (brisanje endpointa nije popravak).
-- Svoje testove stavi u zaseban paket/mapu, npr. `…/sigurnost/` (Java) ili `tests/{{DOMENA_KLASA}}.Tests/Sigurnost/` (.NET).
-  Primjer stila pisanja testa je u paketu/mapi `primjer` / `Primjer`.
+- Svoje testove stavi u zaseban paket/mapu, npr. `…/sigurnost/` (Java), `tests/{{DOMENA_KLASA}}.Tests/Sigurnost/` (.NET)
+  ili `tests/sigurnost/` (Python, s datotekama `test_*.py`). Primjer stila pisanja testa je u paketu/mapi `primjer` / `Primjer`.
 - Alate pokreći **samo prema vlastitoj lokalnoj instanci** (`localhost`).
 - Dopuštena je sva javna dokumentacija (OWASP Cheat Sheet Series, dokumentacija okvira…). Ako koristiš AI
   asistente, navedi to u izvještaju – svaki popravak moraš znati objasniti.
@@ -81,7 +82,7 @@ Na Moodle zadaću **„Predaja projekta – Tjedan 2”** predaj **jedan ZIP** n
 
 ```
 {{VARIJANTA}}-Ime-Prezime.zip
-├─ java/  ili  dotnet/        ← samo mapa u kojoj si radio, BEZ target/, bin/, obj/, .idea/, .vs/
+├─ java/, dotnet/ ili python/ ← samo mapa u kojoj si radio, BEZ target/, bin/, obj/, .idea/, .vs/, .venv/, __pycache__/
 ├─ izvjestaj.pdf (ili .docx)  ← uključuje model prijetnji i ASVS listu (ili kao zasebne datoteke)
 └─ alati/                     ← izvještaji alata prije i poslije (npr. ZAP HTML, Semgrep SARIF/JSON, OSV-Scanner)
 ```

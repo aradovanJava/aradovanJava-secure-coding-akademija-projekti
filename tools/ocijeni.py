@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Ocjenjivanje predaje polaznika (Tjedan 2) skrivenim testovima.
 
-  python3 tools/ocijeni.py --predaja predaje/V07-Ime-Prezime.zip [--variant V07] [--stack auto|java|dotnet]
+  python3 tools/ocijeni.py --predaja predaje/V07-Ime-Prezime.zip [--variant V07] [--stack auto|java|dotnet|python]
                            [--out izvjestaji/V07-Ime-Prezime.md]
 
 Što radi:
-  1. raspakira predaju i pronađe projekt (pom.xml → Java, *.sln → .NET; ako su oba, uzima onaj koji je mijenjan),
+  1. raspakira predaju i pronađe projekt (pom.xml → Java, *.sln → .NET, pyproject.toml + requirements-dev.txt →
+     Python; ako ih je više, uzima onaj koji je najviše mijenjan),
   2. u kopiju predaje doda skrivene testove i pokrene SVE testove → koji su ranjivi slotovi ispravljeni,
      jesu li sigurni slotovi ostali sigurni, prolaze li funkcionalni testovi, pokrivenost koda,
   3. testove polaznika pokrene na IZVORNOJ varijanti → koji testovi „hvataju” ranjivost (crveno → zeleno),
   4. ispiše izvještaj (Markdown) s prijedlogom razina prema rubrici iz programa.
 
-Potrebno lokalno: Python 3.9+, JDK 21 (za Java predaje) i/ili .NET 10 SDK (za .NET predaje).
+Potrebno lokalno: Python 3.12+ (i za Python predaje), JDK 21 (za Java predaje) i/ili .NET 10 SDK (za .NET predaje).
 Isto se može pokrenuti u GitHub Actions (workflow „ocijeni”).
 """
 import argparse, glob, json, os, re, shutil, subprocess, sys, tempfile, zipfile
@@ -50,6 +51,8 @@ def find_projects(base):
             found["java"] = (root, depth)
         if any(f.endswith(".sln") or f.endswith(".slnx") for f in files) and ("dotnet" not in found or depth < found["dotnet"][1]):
             found["dotnet"] = (root, depth)
+        if {"pyproject.toml", "requirements-dev.txt"} <= set(files) and ("python" not in found or depth < found["python"][1]):
+            found["python"] = (root, depth)
     return {k: v[0] for k, v in found.items()}
 
 
@@ -88,6 +91,24 @@ def run_tests(stack, proj, res):
                     m, cv = int(c.get("missed")), int(c.get("covered"))
                     cov = 100.0 * cv / max(1, m + cv)
         return rc == 0, cov
+    if stack == "python":
+        py = os.environ.get("PYTHON") or sys.executable
+        venv_py = os.path.join(proj, ".venv", "Scripts" if IS_WIN else "bin", "python")
+        if run([py, "-m", "venv", ".venv"], proj, log) != 0 or \
+                run([venv_py, "-m", "pip", "install", "-q", "--disable-pip-version-check", "-r", "requirements-dev.txt"],
+                    proj, log) != 0:
+            return False, None
+        junit = os.path.join(res, "TEST-pytest.xml")
+        cov_xml = os.path.join(res, "coverage.xml")
+        run([venv_py, "-m", "pytest", "-p", "no:cacheprovider", "-q", f"--junitxml={junit}", "-o", "junit_family=xunit2",
+             "--cov", f"--cov-report=xml:{cov_xml}"], proj, log)
+        cov = None
+        if os.path.exists(cov_xml):
+            try:
+                cov = 100.0 * float(ET.parse(cov_xml).getroot().get("line-rate", "0"))
+            except (ValueError, ET.ParseError):
+                pass
+        return os.path.exists(junit) and os.path.getsize(junit) > 0, cov
     sln = sorted(glob.glob(os.path.join(proj, "*.sln")) + glob.glob(os.path.join(proj, "*.slnx")))[0]
     if run(["dotnet", "build", sln, "-c", "Debug", "-nologo"], proj, log) != 0:
         return False, None
@@ -111,6 +132,11 @@ def student_test_files(stack, proj, domain):
         for p in glob.glob(os.path.join(base, "**", "*"), recursive=True):
             rel = os.path.relpath(p, proj).replace("\\", "/")
             if os.path.isfile(p) and not re.search(r"/(funkcionalno|primjer|skriveno)/", rel):
+                out.append(rel)
+    elif stack == "python":
+        for p in glob.glob(os.path.join(proj, "tests", "**", "*.py"), recursive=True):
+            rel = os.path.relpath(p, proj).replace("\\", "/")
+            if not re.search(r"/(funkcionalno|primjer|skriveno|__pycache__)/", rel):
                 out.append(rel)
     else:
         tdir = os.path.join(proj, "tests", f"{gen.DOMAINS[domain]}.Tests")
@@ -146,7 +172,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--predaja", required=True, help="ZIP ili mapa s predajom")
     ap.add_argument("--variant")
-    ap.add_argument("--stack", default="auto", choices=["auto", "java", "dotnet"])
+    ap.add_argument("--stack", default="auto", choices=["auto", "java", "dotnet", "python"])
     ap.add_argument("--out")
     ap.add_argument("--keep", action="store_true", help="ne briši privremene mape")
     a = ap.parse_args()
@@ -186,9 +212,9 @@ def main():
     elif projects:
         scores = {s: changed_files(s, domain, vulnerable, p, work) for s, p in projects.items()}
         stack = max(scores, key=scores.get)
-        print(f"Predaja sadrži oba projekta; promijenjenih datoteka: {scores} → ocjenjujem {stack}")
+        print(f"Predaja sadrži više projekata; promijenjenih datoteka: {scores} → ocjenjujem {stack}")
     else:
-        sys.exit("U predaji nema Maven (pom.xml) ni .NET (.sln) projekta.")
+        sys.exit("U predaji nema Maven (pom.xml), .NET (.sln) ni Python (pyproject.toml) projekta.")
     proj_src = projects[stack]
     print(f"Varijanta {variant} ({domain}), {stack}: {proj_src}")
 

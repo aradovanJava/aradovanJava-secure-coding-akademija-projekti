@@ -6,7 +6,7 @@
 |---|---|
 | Polaznik | *Ime Prezime* |
 | Varijanta | {{VARIJANTA}} |
-| Tehnologija | *Java / Spring Boot* ili *C# / .NET* |
+| Tehnologija | *Java / Spring Boot*, *C# / .NET* ili *Python / FastAPI* |
 | Datum | *dd. mm. 2026.* |
 | Korišteni savjeti s Moodlea | *nijedan / razina 1 za … / razina 2 za …* |
 | Korišteni AI asistenti | *ne / da – za što* |
@@ -40,7 +40,7 @@ Cijeli model priloži ili uključi kao dodatak.*
 | Polje | Opis |
 |---|---|
 | Kategorija | OWASP Top 10:2025 *Axx – naziv* · CWE-*xxx* |
-| Lokacija | *endpoint (npr. `GET /api/…`), datoteka i metoda (npr. `…Controller.java`, `metoda()`)* |
+| Lokacija | *endpoint (npr. `GET /api/…`), datoteka i metoda (npr. `…Controller.java` / `rezervacije.py`, `metoda()`)* |
 | Kako je pronađeno | *alat i pravilo/nalaz (npr. Semgrep `…`, ZAP alert `…`) ili ručni pregled* |
 | Ozbiljnost | *Kritična / Visoka / Srednja / Niska* + obrazloženje (ili CVSS 4.0 vektor) |
 | Dokaz (reprodukcija) | *koraci; zahtjev i odgovor (isječak); snimka zaslona* |

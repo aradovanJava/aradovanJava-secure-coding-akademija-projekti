@@ -11,7 +11,7 @@ on:
         required: false
         default: ''
       stack:
-        description: 'auto | java | dotnet'
+        description: 'auto | java | dotnet | python'
         required: false
         default: 'auto'
 jobs:
@@ -28,6 +28,9 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
       - name: Ocjenjivanje
         env:
           PREDAJA: ${{ github.event.inputs.predaja }}

@@ -8,19 +8,22 @@ Primjeri:
   generate.py --stack java   --domain medtermin --mode all-vuln   --dest /tmp/mt-vuln   --with-hidden
   generate.py --stack dotnet --domain ulaznica  --mode all-secure --dest /tmp/ul-sec    --with-hidden
   generate.py --stack java   --variant V07                         --dest /tmp/v07-java
-  generate.py --student V07 --out dist/      # paket za polaznika: java/ + dotnet/ + upute + ZIP
+  generate.py --stack python --domain kadrovska --mode all-vuln   --dest /tmp/ka-vuln   --with-hidden
+  generate.py --student V07 --out dist/      # paket za polaznika: java/ + dotnet/ + python/ + upute + ZIP
 """
 import argparse, json, os, re, shutil, stat, sys, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SLOTS = [f"S{i:02d}" for i in range(1, 14)]
 DOMAINS = {"medtermin": "MedTermin", "ulaznica": "Ulaznica", "kadrovska": "Kadrovska"}
+STACKS = ("java", "dotnet", "python")
 
 TEXT_EXT = {".java", ".cs", ".xml", ".properties", ".yml", ".yaml", ".json", ".http", ".md", ".sql", ".txt",
             ".csproj", ".sln", ".props", ".targets", ".html", ".css", ".js", ".cmd", ".sh", ".editorconfig",
-            ".gitignore", ".gitattributes", ".config", ".razor", ".cshtml"}
+            ".gitignore", ".gitattributes", ".config", ".razor", ".cshtml", ".py", ".toml", ".cfg", ".ini"}
 TEXT_NAMES = {"mvnw", "Dockerfile", ".editorconfig", ".gitignore", ".gitattributes"}
-SKIP_DIRS = {"target", "bin", "obj", ".idea", ".vs", "TestResults", "node_modules", "data"}
+SKIP_DIRS = {"target", "bin", "obj", ".idea", ".vs", "TestResults", "node_modules", "data",
+             ".venv", "venv", "__pycache__", ".pytest_cache", ".ruff_cache", "htmlcov"}
 
 MARK = re.compile(r"@@(VULN|SECURE|END)\s+(S\d\d)\b")
 FILE_MARK = re.compile(r"@@FILE-(VULN|SECURE)\s+(S\d\d)\b")
@@ -33,7 +36,7 @@ LINT_PATTERNS = [
 ]
 LINT_RE = re.compile("|".join(LINT_PATTERNS), re.IGNORECASE)
 LINT_FILE_EXT = {".java", ".cs", ".xml", ".properties", ".json", ".http", ".csproj", ".sln", ".sql", ".html",
-                 ".js", ".css", ".yml", ".yaml", ".md", ".cshtml", ".razor"}
+                 ".js", ".css", ".yml", ".yaml", ".md", ".cshtml", ".razor", ".py", ".toml", ".cfg", ".ini"}
 LINT_SKIP_FILES = {"mvnw", "mvnw.cmd", "maven-wrapper.properties"}
 
 
@@ -157,6 +160,8 @@ def load_variants():
 def hidden_target(stack, domain, dest):
     if stack == "java":
         return os.path.join(dest, "src", "test")
+    if stack == "python":
+        return os.path.join(dest, "tests")            # hidden-tests/python/<domena>/skriveno/ → tests/skriveno/
     return os.path.join(dest, "tests", f"{DOMAINS[domain]}.Tests")
 
 
@@ -197,7 +202,7 @@ def student_package(variant, out_dir):
     if os.path.exists(base):
         shutil.rmtree(base)
     os.makedirs(base)
-    for stack in ("java", "dotnet"):
+    for stack in STACKS:
         if os.path.isdir(os.path.join(ROOT, "templates", stack, domain)):
             generate(stack, domain, vulnerable, os.path.join(base, stack), quiet=True)
     sd = os.path.join(ROOT, "student-docs")
@@ -234,7 +239,7 @@ def student_package(variant, out_dir):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--stack", choices=["java", "dotnet"])
+    ap.add_argument("--stack", choices=list(STACKS))
     ap.add_argument("--domain", choices=list(DOMAINS))
     ap.add_argument("--mode", choices=["all-vuln", "all-secure", "variant"], default="variant")
     ap.add_argument("--variant")

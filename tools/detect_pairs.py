@@ -3,7 +3,7 @@
 import json, os, subprocess
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-existing = sorted(f"{s}/{d}" for s in ("java", "dotnet") for d in ("medtermin", "ulaznica", "kadrovska")
+existing = sorted(f"{s}/{d}" for s in ("java", "dotnet", "python") for d in ("medtermin", "ulaznica", "kadrovska")
                   if os.path.isdir(os.path.join(root, "templates", s, d))
                   and os.path.isdir(os.path.join(root, "hidden-tests", s, d)))
 inp = (os.environ.get("INPUT_PAIRS") or "").split()
