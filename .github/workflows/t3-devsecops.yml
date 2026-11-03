@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        stack: [java, dotnet]
+        stack: [java, dotnet, python]
         mode: [all-secure, all-vuln]
     runs-on: ubuntu-latest
     name: ${{ matrix.stack }}/medtermin ${{ matrix.mode }}
@@ -38,9 +38,18 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Diff ci/ java vs dotnet (skripte moraju biti iste)
+      # Python projekt: isti Python kao u predlošku cjevovoda (devsecops/python/.github/workflows)
+      - if: matrix.stack == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: 'templates/python/medtermin/requirements*.txt'
+      - name: Diff ci/ java vs dotnet vs python (skripte moraju biti iste)
         working-directory: ${{ github.workspace }}
-        run: diff -r -x prihvaceno.txt tjedan-3/devsecops/java/ci tjedan-3/devsecops/dotnet/ci
+        run: |
+          diff -r -x prihvaceno.txt tjedan-3/devsecops/java/ci tjedan-3/devsecops/dotnet/ci
+          diff -r -x prihvaceno.txt tjedan-3/devsecops/java/ci tjedan-3/devsecops/python/ci
       - name: Generiraj projekt + predložak
         working-directory: ${{ github.workspace }}
         run: tjedan-3/devsecops/test/pripremi.sh ${{ matrix.stack }} medtermin ${{ matrix.mode }} "/tmp/t3-projekt"

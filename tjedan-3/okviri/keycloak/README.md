@@ -50,11 +50,12 @@ TOKEN=$(curl -s -X POST http://localhost:8180/realms/akademija/protocol/openid-c
 
 curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/rezervacije/moje   # Java
 curl -H "Authorization: Bearer $TOKEN" http://localhost:5080/api/rezervacije/moje   # .NET
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/rezervacije/moje   # Python
 ```
 
 Sadržaj tokena (bez provjere potpisa): `echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | jq` ili jwt.io (samo s testnim tokenima!).
 
 ## Automatska provjera
 
-S pokrenutim Keycloakom i API-jima: `./provjera.sh java dotnet` – provjerava 401 bez tokena i s krivotvorenim
+S pokrenutim Keycloakom i API-jima: `./provjera.sh java dotnet python` (ili samo neke od njih) – provjerava 401 bez tokena i s krivotvorenim
 potpisom, „samo moje”, 404 za tuđu rezervaciju, 403/200 za ADMIN popis. Isto radi CI (`t3-okviri.yml`).

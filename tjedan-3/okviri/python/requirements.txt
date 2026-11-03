@@ -1,0 +1,15 @@
+# Okviri (FastAPI) – izvršne ovisnosti, zaključane verzije (Dependabot ih ažurira tjednim PR-ovima).
+fastapi==0.162.0
+# Starlette: CORSMiddleware, TrustedHostMiddleware (dolazi s FastAPI-jem, verzija zaključana i ovdje)
+starlette==1.10.0
+pydantic==2.14.2
+# Postavke iz varijabli okruženja i datoteke .env (tajne izvan repozitorija)
+pydantic-settings==2.16.2
+uvicorn==0.54.0
+# JWT od Keycloaka: potpis (RS256 + JWKS), iss, aud, exp
+pyjwt[crypto]==2.15.1
+cryptography==50.0.2
+# Lozinke: Argon2id (+ provjera starih bcrypt hasheva) s automatskom nadogradnjom pri prijavi
+pwdlib[argon2,bcrypt]==0.3.1
+# Ograničavanje broja pokušaja prijave (fixed window; ista biblioteka koju koristi slowapi)
+limits==5.8.0

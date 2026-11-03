@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Provjera kompletnog toka: Keycloak (docker compose) -> token -> Java i/ili .NET primjer.
-#   tjedan-3/okviri/keycloak/provjera.sh [java] [dotnet]
-# Pretpostavlja da su aplikacije već pokrenute (Java na :8080, .NET na :5080) ili ih pokreće CI.
+# Provjera kompletnog toka: Keycloak (docker compose) -> token -> Java, .NET i/ili Python primjer.
+#   tjedan-3/okviri/keycloak/provjera.sh [java] [dotnet] [python]
+# Pretpostavlja da su aplikacije već pokrenute (Java na :8080, .NET na :5080, Python na :8000) ili ih pokreće CI.
 set -euo pipefail
 cd "$(dirname "$0")"
 KC=http://localhost:8180/realms/akademija
-ciljevi=("$@"); [ ${#ciljevi[@]} -gt 0 ] || ciljevi=(java dotnet)
+ciljevi=("$@"); [ ${#ciljevi[@]} -gt 0 ] || ciljevi=(java dotnet python)
 
 echo "Čekam Keycloak …"
 for _ in $(seq 1 90); do curl -fsS "$KC/.well-known/openid-configuration" >/dev/null 2>&1 && break; sleep 2; done
@@ -31,7 +31,10 @@ ocekuj() { # opis ocekivani_status metoda url [token]
   if [ "$st" = "$ocek" ]; then echo "  OK   $opis ($st)"; else echo "::error::$opis: očekivano $ocek, dobiveno $st"; greske=$((greske+1)); fi
 }
 for c in "${ciljevi[@]}"; do
-  case $c in java) B=http://localhost:8080 ;; dotnet) B=http://localhost:5080 ;; *) echo "nepoznato: $c"; exit 2 ;; esac
+  case $c in
+    java) B=http://localhost:8080 ;; dotnet) B=http://localhost:5080 ;; python) B=http://localhost:8000 ;;
+    *) echo "nepoznato: $c"; exit 2 ;;
+  esac
   echo "== $c ($B)"
   ocekuj "bez tokena -> 401" 401 GET "$B/api/rezervacije/moje"
   ocekuj "neispravan potpis -> 401" 401 GET "$B/api/rezervacije/moje" "${ANA%?????}AAAAA"

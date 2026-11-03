@@ -32,6 +32,11 @@ if [ "$STACK" = java ]; then
   fi
   [ -n "$jar" ] || { echo "::error::Nije pronađen izvršni JAR u target/"; exit 1; }
   java -jar "$jar" --server.port="${URL##*:}" > "$IZVJESTAJI/aplikacija.log" 2>&1 &
+elif [ "$STACK" = python ]; then
+  URL="${DAST_URL:-http://localhost:8000}"
+  python_okruzenje requirements.txt
+  # python -m <paket>; port u varijablama PORT i APP_PORT (T2 projekti čitaju APP_PORT, zadano 8000)
+  PORT="${URL##*:}" APP_PORT="${URL##*:}" "$VENV/bin/python" -m "$PAKET" > "$IZVJESTAJI/aplikacija.log" 2>&1 &
 else
   URL="${DAST_URL:-http://localhost:5080}"
   dotnet run --project "$API_PROJEKT" -c Release --no-launch-profile --urls "$URL" \

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Sigurnosna vrata (quality gate) – jedino mjesto gdje se odlučuje prolazi li cjevovod.
 
-Čita izvještaje iz izvjestaji/ (Semgrep, SpotBugs ili Roslyn, OSV-Scanner, NuGet audit,
-gitleaks, ZAP), primjenjuje POLITIKU (dolje) i iznimke iz ci/prihvaceno.txt te:
+Čita izvještaje iz izvjestaji/ (Semgrep, SpotBugs / Roslyn / Bandit, OSV-Scanner, NuGet audit /
+pip-audit, gitleaks, ZAP), primjenjuje POLITIKU (dolje) i iznimke iz ci/prihvaceno.txt te:
   * ispisuje tablicu nalaza (i u sažetak GitHub Actions posla),
   * zapisuje izvjestaji/gate.json,
   * završava s kodom 1 ako postoji ijedan BLOKIRAJUĆI nalaz.
@@ -37,14 +37,18 @@ ROSLYN_SAMO_INFO = {                                      # pravila "za ručni p
     "CA5391",  # antiforgery token – API s Bearer tokenom
     "CA5395",  # nedostaje HttpVerb atribut
 }
+BANDIT_BLOKIRA = {"HIGH"}                                 # issue_severity (MEDIUM/LOW -> info)
+BANDIT_MIN_POUZDANOST = {"MEDIUM", "HIGH"}                # issue_confidence (LOW -> info)
 OSV_PRAG_CVSS = 7.0                                       # CVSS >= 7.0 = High/Critical
 NUGET_BLOKIRA = {"high", "critical"}
+# pip-audit ne daje ozbiljnost: ocjena se uzima iz OSV-a za isti savjet (ID ili alias) uz isti prag;
+# savjet koji OSV ne poznaje BLOKIRA (ozbiljnost nepoznata -> zatvoreno pri grešci).
 ZAP_PRAG_RIZIKA = 3                                       # 3 = High (2 = Medium, 1 = Low)
 # gitleaks: SVAKA pronađena tajna blokira.
 # ==================================================================
 
-KATEGORIJA = {"semgrep": "sast", "spotbugs": "sast", "roslyn": "sast", "osv": "sca", "nuget": "sca",
-              "gitleaks": "tajne", "zap": "dast", "ci": "ci"}
+KATEGORIJA = {"semgrep": "sast", "spotbugs": "sast", "roslyn": "sast", "bandit": "sast", "osv": "sca",
+              "nuget": "sca", "pip-audit": "sca", "gitleaks": "tajne", "zap": "dast", "ci": "ci"}
 
 
 def nalaz(alat, pravilo, ozbiljnost, datoteka="", redak=0, redak_do=0, poruka="", blokira=False, kontekst=None):
@@ -136,7 +140,24 @@ def roslyn():
         print(f"Roslyn: {ostalo} upozorenja izvan kategorije {ROSLYN_KATEGORIJA} (kvaliteta koda, ne utječu na vrata)")
 
 
-def osv():
+def bandit():
+    podaci = ucitaj_json("bandit.json")
+    for g in podaci.get("errors", []) or []:  # datoteka koju Bandit nije analizirao = alat nije radio
+        yield nalaz("ci", "bandit-nije-analizirao", "-", rel(g.get("filename", "")), 0, 0,
+                    f"Bandit: {g.get('reason', 'greška analize')}", True)
+    for r in podaci.get("results", []) or []:
+        oz, pouzdanost = str(r.get("issue_severity", "")).upper(), str(r.get("issue_confidence", "")).upper()
+        redci = r.get("line_range") or [r.get("line_number", 0)]
+        yield nalaz("bandit", r.get("test_id", "?"), f"{oz}, pouzdanost {pouzdanost}", rel(r.get("filename", "")),
+                    r.get("line_number"), max(redci), f"{r.get('test_name')}: {r.get('issue_text')}",
+                    oz in BANDIT_BLOKIRA and pouzdanost in BANDIT_MIN_POUZDANOST)
+    nosec = (podaci.get("metrics", {}).get("_totals", {}) or {}).get("nosec", 0)
+    if nosec:
+        print(f"Bandit: {nosec} nalaza potisnuto u kodu (# nosec) – provjerite obrazloženja u code reviewu")
+
+
+def osv_grupe():
+    """(paket@verzija, ID-ovi, aliasi, ozbiljnost, blokira, sažetak) za svaku grupu savjeta iz osv.json."""
     for res in ucitaj_json("osv.json").get("results", []) or []:
         for p in res.get("packages", []) or []:
             pkg = p.get("package", {})
@@ -144,7 +165,6 @@ def osv():
             vulns = {v["id"]: v for v in p.get("vulnerabilities", []) or []}
             for g in p.get("groups", []) or []:
                 ids = g.get("ids") or []
-                glavni = next((i for i in ids if i.startswith("GHSA")), ids[0] if ids else "?")
                 cvss = g.get("max_severity") or ""
                 db = {str(vulns.get(i, {}).get("database_specific", {}).get("severity", "")).upper() for i in ids}
                 try:
@@ -153,7 +173,14 @@ def osv():
                     blok = bool(db & {"HIGH", "CRITICAL"})
                 sazetak = next((vulns[i].get("summary", "") for i in ids if i in vulns), "")
                 oz = f"CVSS {cvss}" if cvss else "/".join(sorted(x for x in db if x)) or "nepoznato"
-                yield nalaz("osv", glavni, oz, ime, 0, 0, f"{ime}: {sazetak} ({', '.join(ids)})", blok)
+                aliasi = set(g.get("aliases") or []) | {a for i in ids for a in vulns.get(i, {}).get("aliases", [])}
+                yield ime, ids, aliasi, oz, blok, sazetak
+
+
+def osv():
+    for ime, ids, _, oz, blok, sazetak in osv_grupe():
+        glavni = next((i for i in ids if i.startswith("GHSA")), ids[0] if ids else "?")
+        yield nalaz("osv", glavni, oz, ime, 0, 0, f"{ime}: {sazetak} ({', '.join(ids)})", blok)
 
 
 def nuget():
@@ -168,6 +195,35 @@ def nuget():
                         yield nalaz("nuget", url.rstrip("/").rsplit("/", 1)[-1] or "?", sev, ime, 0, 0,
                                     f"{ime} ({'izravna' if vrsta == 'topLevelPackages' else 'tranzitivna'}) {url}",
                                     sev.lower() in NUGET_BLOKIRA)
+
+
+def pip_audit():
+    # Ozbiljnost iz OSV-a (isti savjet pod ID-om ili aliasom); bez osv.json sve je "nepoznato" -> blokira.
+    ocjene = {}
+    try:
+        for _, ids, aliasi, oz, blok, _ in osv_grupe():
+            for i in [*ids, *aliasi]:
+                if i not in ocjene or blok:
+                    ocjene[i] = (oz, blok)
+    except Exception:  # noqa: BLE001 – neispravan osv.json prijavljuje čitač osv(); ovdje samo nema ocjena
+        pass
+    for dep in ucitaj_json("pip-audit.json").get("dependencies", []) or []:
+        ime = f"{dep.get('name')}@{dep.get('version')}"
+        vidjeno = set()
+        for v in dep.get("vulns", []) or []:
+            if v.get("id") in vidjeno:
+                continue
+            vidjeno.add(v.get("id"))
+            ids = [v.get("id", "?"), *(v.get("aliases") or [])]
+            poznato = [ocjene[i] for i in ids if i in ocjene]
+            if poznato:
+                oz, blok = next((o for o in poznato if o[1]), poznato[0])
+            else:
+                oz, blok = "nepoznato (nema u OSV-u)", True
+            glavni = next((i for i in ids if i.startswith("GHSA")), ids[0])
+            popravak = ", ".join(v.get("fix_versions") or []) or "nema"
+            yield nalaz("pip-audit", glavni, oz, ime, 0, 0,
+                        f"{ime}: {', '.join(ids)}; popravljeno u: {popravak}", blok)
 
 
 def gitleaks():
@@ -198,14 +254,29 @@ def zap():
                         f"{d.get('naslov')} – {d.get('dokaz')}", int(d.get("rizik", 3)) >= ZAP_PRAG_RIZIKA)
 
 
-CITACI = {"semgrep.json": semgrep, "spotbugs.xml": spotbugs, "roslyn.sarif": roslyn, "osv.json": osv,
-          "nuget-audit.json": nuget, "gitleaks.sarif": gitleaks, "zap/zap.json": zap}
+CITACI = {"semgrep.json": semgrep, "spotbugs.xml": spotbugs, "roslyn.sarif": roslyn, "bandit.json": bandit,
+          "osv.json": osv, "nuget-audit.json": nuget, "pip-audit.json": pip_audit, "gitleaks.sarif": gitleaks,
+          "zap/zap.json": zap}
 OCEKIVANO = {
     "java": ["semgrep.json", "spotbugs.xml", "osv.json", "gitleaks.sarif", "zap/zap.json"],
     "dotnet": ["semgrep.json", "roslyn.sarif", "osv.json", "nuget-audit.json", "gitleaks.sarif", "zap/zap.json"],
+    "python": ["semgrep.json", "bandit.json", "osv.json", "pip-audit.json", "gitleaks.sarif", "zap/zap.json"],
 }
-KAT_IZVJESTAJA = {"semgrep.json": "sast", "spotbugs.xml": "sast", "roslyn.sarif": "sast", "osv.json": "sca",
-                  "nuget-audit.json": "sca", "gitleaks.sarif": "tajne", "zap/zap.json": "dast"}
+KAT_IZVJESTAJA = {"semgrep.json": "sast", "spotbugs.xml": "sast", "roslyn.sarif": "sast", "bandit.json": "sast",
+                  "osv.json": "sca", "nuget-audit.json": "sca", "pip-audit.json": "sca", "gitleaks.sarif": "tajne",
+                  "zap/zap.json": "dast"}
+
+
+def prepoznaj_stack():
+    """Isto kao ci/zajednicko.sh: pom.xml -> java, *.sln -> dotnet, pyproject.toml/requirements.txt -> python."""
+    if os.path.exists(os.path.join(KORIJEN, "pom.xml")):
+        return "java"
+    datoteke = os.listdir(KORIJEN)
+    if any(d.endswith((".sln", ".slnx")) for d in datoteke):
+        return "dotnet"
+    if "pyproject.toml" in datoteke or "requirements.txt" in datoteke:
+        return "python"
+    return "dotnet"
 
 
 # --------------------------- prihvaćeni nalazi ---------------------------
@@ -264,7 +335,7 @@ def odgovara(p, n):
 
 # --------------------------------- main ---------------------------------
 def main():
-    stack = "java" if os.path.exists(os.path.join(KORIJEN, "pom.xml")) else "dotnet"
+    stack = prepoznaj_stack()
     preskoci = set(os.environ.get("GATE_PRESKOCI", "").split())
     nalazi = []
 

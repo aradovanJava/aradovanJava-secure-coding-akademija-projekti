@@ -3,7 +3,7 @@
 
 all-secure: vrata PROLAZE (dopušteni su samo prihvaćeni nalazi s obrazloženjem).
 all-vuln:   vrata NE PROLAZE, uz stvarne blokirajuće nalaze iz SAST-a, SCA-a (ranjiva YAML
-            biblioteka) i DAST-a; nijedan izvještaj ne smije nedostajati.
+            biblioteka: snakeyaml / YamlDotNet / PyYAML) i DAST-a; nijedan izvještaj ne smije nedostajati.
 """
 import argparse
 import json
@@ -53,7 +53,7 @@ else:
         greske.append("vrata moraju PASTI na all-vuln")
     if not [n for n in blok if n["kategorija"] == "sast"]:
         greske.append("SAST nema blokirajućih nalaza")
-    yaml_lib = "snakeyaml" if a.stack == "java" else "yamldotnet"
+    yaml_lib = {"java": "snakeyaml", "dotnet": "yamldotnet", "python": "pyyaml"}[a.stack]
     if not [n for n in blok if n["kategorija"] == "sca" and yaml_lib in n["datoteka"].lower()]:
         greske.append(f"SCA ne blokira ranjivu YAML biblioteku ({yaml_lib})")
     if not [n for n in blok if n["kategorija"] == "dast"]:

@@ -1,0 +1,10 @@
+# Ovisnosti za razvoj i testove (uključuje izvršne ovisnosti).
+-r requirements.txt
+pytest==9.2.0
+pytest-cov==7.1.0
+# Starlette TestClient (od Starlette 1.x preporučuje paket httpx2)
+httpx2==2.16.0
+# Statička analiza (lint + sigurnosna pravila) i analiza ovisnosti
+ruff==0.17.3
+bandit==1.9.4
+pip-audit==2.10.1

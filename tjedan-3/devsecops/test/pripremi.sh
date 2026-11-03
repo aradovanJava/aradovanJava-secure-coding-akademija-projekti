@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test predloška: generira T2 projekt (all-secure / all-vuln), doda DevSecOps predložak i
 # napravi git repozitorij – stanje kao kod polaznika nakon kopiranja predloška u svoj projekt.
-#   tjedan-3/devsecops/test/pripremi.sh <java|dotnet> <domena> <all-secure|all-vuln> <odredište>
+#   tjedan-3/devsecops/test/pripremi.sh <java|dotnet|python> <domena> <all-secure|all-vuln> <odredište>
 set -euo pipefail
 stack=$1; domena=$2; nacin=$3; odr=$4
 root=$(cd "$(dirname "$0")/../../.." && pwd)

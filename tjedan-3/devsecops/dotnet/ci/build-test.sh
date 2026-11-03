@@ -1,8 +1,27 @@
 #!/usr/bin/env bash
-# Build + svi testovi + izvještaj o pokrivenosti koda (JaCoCo / Coverlet).
+# Build + svi testovi + izvještaj o pokrivenosti koda (JaCoCo / Coverlet / coverage.py).
 source "$(dirname "$0")/zajednicko.sh"
 
 mkdir -p "$IZVJESTAJI/testovi" "$IZVJESTAJI/pokrivenost"
+
+if [ "$STACK" = python ]; then
+  # Ovisnosti za razvoj (pytest, pytest-cov …) u virtualno okruženje .venv; izvještaji nastaju i kad test padne.
+  if [ -f requirements-dev.txt ]; then python_okruzenje requirements-dev.txt; else python_okruzenje requirements.txt; fi
+  "$VENV/bin/python" -c 'import pytest_cov' 2>/dev/null || "$VENV/bin/python" -m pip install -q pytest pytest-cov
+  rc=0
+  "$VENV/bin/python" -m pytest -p no:cacheprovider -o junit_family=xunit2 \
+    --junitxml="$IZVJESTAJI/testovi/pytest.xml" --cov="$PAKET" --cov-report=term \
+    --cov-report=xml:"$IZVJESTAJI/pokrivenost/coverage.xml" --cov-report=html:"$IZVJESTAJI/pokrivenost/html" || rc=$?
+  if [ -f "$IZVJESTAJI/pokrivenost/coverage.xml" ]; then
+    python3 - "$IZVJESTAJI/pokrivenost/coverage.xml" <<'PY' | while read -r l; do sazetak "$l"; done
+import sys, xml.etree.ElementTree as ET
+r = ET.parse(sys.argv[1]).getroot()
+print(f"**Pokrivenost redaka (coverage.py):** {100 * float(r.get('line-rate', 0)):.1f} % "
+      f"({r.get('lines-covered')}/{r.get('lines-valid')})")
+PY
+  fi
+  exit "$rc"
+fi
 
 if [ "$STACK" = java ]; then
   # verify = compile + test (+ JaCoCo report u fazi test) + package

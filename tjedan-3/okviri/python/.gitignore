@@ -1,0 +1,14 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+# Lokalne tajne i postavke – nikad u git (predložak: .env.primjer)
+.env
+.idea/
+.vscode/

@@ -1,0 +1,3 @@
+
+# --- Test (python/medtermin all-secure): iznimke koje bi dodao polaznik s referentnim popravkom T2 ---
+# (zasad nijedna – popis se puni samo ako stvarni rezultat CI-ja to zahtijeva, uz obrazloženje)

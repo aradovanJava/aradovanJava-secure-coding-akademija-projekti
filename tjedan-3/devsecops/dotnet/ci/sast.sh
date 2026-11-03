@@ -3,6 +3,7 @@
 #  * Semgrep (OWASP Top 10 + pravila za jezik) – oba stacka
 #  * Java: SpotBugs + Find Security Bugs (profil -Psast iz pom.xml)
 #  * .NET: Roslyn analizatori (Microsoft.CodeAnalysis.NetAnalyzers) s AnalysisMode=All
+#  * Python: Bandit (sigurnosna pravila za Python) nad paketom aplikacije
 # Skripta NE odlučuje o prolazu – to radi ci/gate.py. Ovdje samo nastaju izvještaji.
 source "$(dirname "$0")/zajednicko.sh"
 
@@ -10,6 +11,8 @@ source "$(dirname "$0")/zajednicko.sh"
 # Pravila iz registra (semgrep.dev, bez prijave) + vlastita regresijska pravila projekta (ci/semgrep/).
 if [ "$STACK" = java ]; then
   SEMGREP_PRAVILA="${SEMGREP_PRAVILA:-p/owasp-top-ten p/java ci/semgrep}"
+elif [ "$STACK" = python ]; then
+  SEMGREP_PRAVILA="${SEMGREP_PRAVILA:-p/owasp-top-ten p/python ci/semgrep}"
 else
   SEMGREP_PRAVILA="${SEMGREP_PRAVILA:-p/owasp-top-ten p/csharp ci/semgrep}"
 fi
@@ -41,6 +44,17 @@ if [ "$STACK" = dotnet ]; then
     -p:AnalysisMode=All -p:TreatWarningsAsErrors=false \
     "-p:ErrorLog=$IZVJESTAJI/roslyn.sarif%2Cversion=2.1" \
     -v:quiet "-clp:NoSummary;ErrorsOnly"
+fi
+
+# ---------- Python: Bandit ----------
+if [ "$STACK" = python ]; then
+  [ -x "$ALATI/bandit/bin/bandit" ] || python_alat bandit "bandit==$BANDIT_VERZIJA"
+  # Izlazni kod: 0 = nema nalaza, 1 = ima nalaza (gate odlučuje), ostalo = greška alata.
+  # Iznimke u kodu: "# nosec B608 – razlog" (gate ispisuje koliko ih je).
+  rc=0
+  "$ALATI/bandit/bin/bandit" -r "$PAKET" -f json -o "$IZVJESTAJI/bandit.json" -q || rc=$?
+  if [ "$rc" -gt 1 ]; then echo "::error::Bandit nije uspio (izlazni kod $rc)"; exit "$rc"; fi
+  python3 ci/sarif.py bandit "$IZVJESTAJI/bandit.json" "$IZVJESTAJI/bandit.sarif"
 fi
 
 ls -l "$IZVJESTAJI"
