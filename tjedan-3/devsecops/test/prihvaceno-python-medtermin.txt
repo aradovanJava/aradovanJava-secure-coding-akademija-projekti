@@ -1,3 +1,9 @@
 
 # --- Test (python/medtermin all-secure): iznimke koje bi dodao polaznik s referentnim popravkom T2 ---
-# (zasad nijedna – popis se puni samo ako stvarni rezultat CI-ja to zahtijeva, uz obrazloženje)
+# Nijedna nije potrebna (t3-devsecops: 0 blokirajućih i 0 prihvaćenih nalaza na all-secure):
+#  * Semgrep (registar + vlastita python-* pravila) i Bandit nemaju nalaza na popravljenom kodu;
+#    ORDER BY iz rječnika dopuštenih stupaca Bandit B608 ne prepoznaje kao SQL iz stringa.
+#  * Platforma (FastAPI 0.162, Starlette 1.10, pydantic 2.14, uvicorn 0.54, lxml 6.1, argon2-cffi 25.1, PyYAML 6.0.3)
+#    nema poznatih ranjivosti u OSV-u ni u pip-auditu.
+# Ako nova ranjivost u platformi zatvori vrata: nadogradnja (Dependabot), a do tada uska iznimka s rokom, npr.
+# osv | GHSA-xxxx-xxxx-xxxx | starlette@1.10.0 | | razlog i rok (isti savjet i za pip-audit)
