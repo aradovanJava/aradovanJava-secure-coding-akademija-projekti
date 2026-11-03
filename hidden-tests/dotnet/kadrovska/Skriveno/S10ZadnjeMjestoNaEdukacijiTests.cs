@@ -4,7 +4,14 @@ using Xunit;
 
 namespace Kadrovska.Tests.Skriveno;
 
+/// <summary>S10 se izvodi zasebno (bez paralelnih testova koji opterećuju CPU), da utrka bude deterministična.</summary>
+[CollectionDefinition(nameof(S10Zasebno), DisableParallelization = true)]
+public sealed class S10Zasebno
+{
+}
+
 /// <summary>S10 – utrka kod prijave na zadnje mjesto edukacije (edukacija 3: kapacitet 20, prijavljeno 19).</summary>
+[Collection(nameof(S10Zasebno))]
 [Trait("Category", "Skriveno")]
 [Trait("Slot", "S10")]
 public sealed class S10ZadnjeMjestoNaEdukacijiTests
@@ -15,6 +22,9 @@ public sealed class S10ZadnjeMjestoNaEdukacijiTests
     [Fact]
     public async Task IstodobnePrijaveNePrelazeKapacitet()
     {
+        // dovoljno dretvi da svih 10 zahtjeva krene istodobno i na sporom CI računalu
+        ThreadPool.GetMinThreads(out var radne, out var io);
+        ThreadPool.SetMinThreads(Math.Max(radne, 32), Math.Max(io, 32));
         await using var app = new SkrivenoApp();
         var klijenti = new List<HttpClient>();
         for (var i = 0; i < BrojZaposlenika; i++)
