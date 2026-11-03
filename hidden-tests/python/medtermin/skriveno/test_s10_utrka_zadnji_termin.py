@@ -23,8 +23,13 @@ def test_s10_samo_jedan_dobiva_zadnje_mjesto(sk_posluzitelj):
             username = f"utrka{i}x{threading.get_ident() % 1000}"
             r = klijent.post(
                 "/api/auth/register",
-                json={"username": username, "password": "Utrka12345!", "email": f"{username}@primjer.hr",
-                      "ime": "U", "prezime": "T"},
+                json={
+                    "username": username,
+                    "password": "Utrka12345!",
+                    "email": f"{username}@primjer.hr",
+                    "ime": "U",
+                    "prezime": "T",
+                },
             )
             assert r.status_code == 201, r.text
             r = klijent.post("/api/auth/login", json={"username": username, "password": "Utrka12345!"})

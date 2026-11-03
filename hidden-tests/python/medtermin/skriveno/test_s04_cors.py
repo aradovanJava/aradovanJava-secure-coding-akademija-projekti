@@ -16,6 +16,10 @@ def test_s04_preflight_s_tudim_originom(sk_client):
     _provjeri(
         sk_client.options(
             "/api/ja",
-            headers={"Origin": ZLO, "Access-Control-Request-Method": "GET", "Access-Control-Request-Headers": "authorization"},
+            headers={
+                "Origin": ZLO,
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "authorization",
+            },
         )
     )

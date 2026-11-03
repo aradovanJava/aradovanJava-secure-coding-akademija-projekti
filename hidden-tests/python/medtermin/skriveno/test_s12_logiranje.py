@@ -10,7 +10,9 @@ def test_s12_log_bez_lozinke_i_oiba_s_neuspjelom_prijavom(sk_client, caplog):
     odgovor = sk_login(sk_client, "ana", "Ana12345!")
     assert odgovor.status_code == 200
     zaglavlja = {"Authorization": f"Bearer {odgovor.json()['token']}"}
-    r = sk_client.post("/api/rezervacije", json={"terminId": 9, "napomena": "Kontrola", "oib": "48291736504"}, headers=zaglavlja)
+    r = sk_client.post(
+        "/api/rezervacije", json={"terminId": 9, "napomena": "Kontrola", "oib": "48291736504"}, headers=zaglavlja
+    )
     assert r.status_code == 201, f"preduvjet: rezervacija ({r.status_code} {r.text})"
     assert sk_login(sk_client, "marko", "pogresna-lozinka").status_code == 401
 

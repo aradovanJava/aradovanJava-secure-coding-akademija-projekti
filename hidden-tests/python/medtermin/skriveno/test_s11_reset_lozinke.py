@@ -43,4 +43,3 @@ def test_s11_token_iz_poruke_vrijedi_samo_jednom(sk_client, sk_mape):
     assert prvi.status_code == 200, "prvi reset legitimnim tokenom"
     assert drugi.status_code == 400, "drugi reset istim tokenom"
     assert sk_login(sk_client, username, "Nova12345!").status_code == 200
-

@@ -118,9 +118,7 @@ class SkPosluzitelj:
 def sk_posluzitelj(sk_mape: SkMape) -> Iterator[SkPosluzitelj]:
     """Stvarni uvicorn poslužitelj (istodobni zahtjevi iz više dretvi)."""
     port = _slobodan_port()
-    aplikacija = create_app(
-        Postavke(storage_dir=str(sk_mape.pohrana), mailbox_dir=str(sk_mape.posta), port=port)
-    )
+    aplikacija = create_app(Postavke(storage_dir=str(sk_mape.pohrana), mailbox_dir=str(sk_mape.posta), port=port))
     server = uvicorn.Server(uvicorn.Config(aplikacija, host="127.0.0.1", port=port, log_level="warning"))
     dretva = threading.Thread(target=server.run, daemon=True)
     dretva.start()
