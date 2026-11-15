@@ -7,13 +7,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>BazeDemo</RootNamespace>
-    <InvariantGlobalization>true</InvariantGlobalization>
     <!-- NuGetAudit: poznate ranjivosti u ovisnostima javljaju se pri restoreu. -->
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
+    <!-- Sigurnosni demo ne smije imati ovisnost s poznatom ranjivošću: NU1901–NU1904 su greške, ne upozorenja. -->
+    <WarningsAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <!-- Microsoftov upravljački program za SQL Server; verzija je zaključana (prate je Dependabot / NuGetAudit). -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.0" />
   </ItemGroup>
 </Project>
