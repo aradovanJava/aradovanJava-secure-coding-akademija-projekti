@@ -150,7 +150,75 @@ samo MD5 (vidi niže).
   ali ne daje ozbiljnost – vrata je uzimaju iz OSV-a za isti savjet. Platforma T2 za Python (FastAPI 0.162,
   Starlette 1.10, uvicorn 0.54 …) trenutačno nema poznatih ranjivosti, pa all-secure prolazi bez iznimaka.
 
-## 6. Verzije alata
+## 6. Demonstracija korak po korak (na nastavi ili za samostalno ponavljanje)
+
+Cilj demonstracije: pokazati da cjevovod **prolazi na ispravljenom kodu** i **pada čim se propust vrati** – i koji ga
+alat uhvati. Treba GitHub račun, projekt iz 2. tjedna (Java, .NET ili Python) i oko 25 minuta.
+
+### 6.1 Priprema (prije nastave)
+
+1. Napravite repozitorij (npr. `t3-devsecops-demo`, javni ili privatni) i u njega stavite **ispravljeni** projekt
+   iz 2. tjedna (korijen repozitorija = mapa s `pom.xml`, `*.sln` ili `pyproject.toml`).
+2. Kopirajte predložak (odjeljak 1), `git add`, `git commit`, `git push`.
+3. Actions → workflow **devsecops** → pričekajte prvo pokretanje (obično 5–10 minuta: Maven/NuGet/pip, alati, ZAP slika).
+   Ako vrata ne prolaze, riješite nalaze prije nastave (odjeljci 3 i 4) – na nastavi se kreće od **zelenog** stanja.
+4. Pripremite granu za regresiju (6.3), ali je još ne šaljite: `git switch -c demo/regresija`.
+
+Na nastavi se pokretanje ne čeka uživo od početka – pokaže se gotovo zeleno pokretanje, a regresija se pošalje na
+početku demonstracije i do kraja objašnjavanja stigne crveni rezultat.
+
+### 6.2 Zeleno pokretanje (≈ 8 min)
+
+| Što otvoriti | Što reći |
+|---|---|
+| `.github/workflows/devsecops.yml` | Workflow nema logike – poslovi pozivaju `ci/*.sh`, koje se mogu pokrenuti i lokalno. `permissions: contents: read`, akcije s verzijom. |
+| Actions → pokretanje → graf poslova | Build i testovi, SAST, SCA, tajne i DAST rade usporedno; **Sigurnosna vrata** čekaju sve i jedina odlučuju. |
+| Posao *Sigurnosna vrata* → **Summary** | Tablica po kategorijama, blokirajući / prihvaćeni / informativni nalazi. Prihvaćeni nalaz uvijek ima obrazloženje iz `ci/prihvaceno.txt`. |
+| Artefakt `izvjestaj-sast` → `semgrep.sarif` u VS Codeu (*SARIF Viewer*) | Nalaz vodi točno na redak koda; isti format čitaju GitHub code scanning i IDE. |
+| Artefakt `izvjestaj-sca` → `sbom.cdx.json` | SBOM: popis svih komponenti i verzija (CRA, A03:2025). Kad sutra izađe novi CVE, iz SBOM-a se odmah zna je li projekt pogođen. |
+| `ci/gate.py` (vrh datoteke) i `ci/prihvaceno.txt` | Politika je kod: što blokira, što je informativno. Iznimka je uska (alat, pravilo, datoteka **i odsječak**). |
+
+### 6.3 Regresija: vratite jedan propust (≈ 8 min)
+
+Na grani `demo/regresija` napravite **jednu** promjenu, `git commit -am "regresija"`, `git push -u origin demo/regresija`
+i otvorite pull request prema `main` (workflow se pokreće na push u `main` i na svaki pull request):
+
+| Tehnologija | Promjena (S06 – ranjiva YAML biblioteka) | Tko je uhvati |
+|---|---|---|
+| Python | `requirements.txt`: `PyYAML==6.0.3` → `PyYAML==5.3.1`; u `<paket>/platforma/postavke_api.py` `yaml.safe_load(tijelo)` → `yaml.load(tijelo, Loader=yaml.FullLoader)` | OSV + pip-audit (CVSS 9,8) i Semgrep `python-yaml-load-bez-safeloader` |
+| Java | `pom.xml`: `<snakeyaml.version>` → `1.33` | OSV-Scanner (GHSA-mjmj-j48q-9wg2) |
+| .NET | `.csproj`: `YamlDotNet` → `4.3.2` | OSV-Scanner + NuGet audit (GHSA-rpch-cqj9-h65r) |
+
+Druge dobre regresije (sve ih hvataju vlastita Semgrep pravila ili ZAP – vidi tablicu u odjeljku 5): CORS koji
+dopušta bilo koji origin (S04), XML parser s razrješavanjem entiteta (S05), `return Redirect(returnUrl)` bez provjere
+(S03), MD5 za reset token (S11). **Ne** birajte logički propust (S01, S09, S10, S12, S13) – njega hvataju samo testovi,
+i to je druga poruka demonstracije: ako vratite S01, pada posao *Build i testovi* (sigurnosni test iz T2), a ne SAST.
+
+Pokažite: crveni posao *Sigurnosna vrata*, u Summaryju blokirajući nalaz s alatom i pravilom, a u PR-u da se
+promjena ne može spojiti ako je u *Settings → Branches* uključena zaštita grane `main` s obaveznom provjerom
+*Sigurnosna vrata* (preporuka za vaš repozitorij). Na kraju PR zatvorite bez spajanja.
+
+### 6.4 Lokalno, bez GitHuba (Linux, macOS ili WSL; za DAST Docker)
+
+```bash
+bash ci/build-test.sh && bash ci/sast.sh && bash ci/sca.sh && bash ci/secrets.sh
+GATE_PRESKOCI=dast python3 ci/gate.py      # bez Dockera; s Dockerom: bash ci/dast.sh && python3 ci/gate.py
+```
+
+Alati se prvi put preuzimaju u `.ci-alati/` (nekoliko minuta). Izvještaji su u `izvjestaji/`, a ishod vrata u
+`izvjestaji/gate.json`. Lokalno pokretanje dobro je za brzu provjeru prije pusha, ali dokaz za predaju je pokretanje na
+GitHubu (poveznica u `repozitorij.txt`).
+
+### 6.5 Česti problemi u demonstraciji
+
+| Simptom | Rješenje |
+|---|---|
+| Vrata ne prolaze već na `main` zbog ovisnosti platforme (npr. Tomcat, Jackson) | Očekivano za Spring Boot 3.5.7 iz T2 (odjeljak 5): nadogradite Spring Boot (Dependabot PR) ili privremeno `osv-scanner.toml` s `reason` i `ignoreUntil`. |
+| DAST pada: aplikacija se ne pokreće | Pogledajte log u artefaktu `izvjestaj-dast`; česti uzrok je promijenjena lozinka korisnika `ana` – postavite secret `DAST_LOZINKA`. |
+| gitleaks blokira na staroj povijesti | Prava tajna: opozovite je. Lažno pozitivno: otisak u `.gitleaksignore`. |
+| Privatni repozitorij: nema kartice *Security → Code scanning* | Očekivano bez GitHub Advanced Security – rezultati su u Summaryju i artefaktima. |
+
+## 7. Verzije alata
 
 Semgrep 1.183.0 · SpotBugs Maven plugin 4.8.6.6 + Find Security Bugs 1.13.0 (iz `pom.xml`) · Roslyn NetAnalyzers iz
 .NET 10 SDK-a · Bandit 1.9.4 · CycloneDX Maven 2.9.1 / CycloneDX .NET 6.3.1 / cyclonedx-bom (`cyclonedx-py`) 7.6.0 ·

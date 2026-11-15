@@ -106,6 +106,11 @@ jobs:
           curl -fsS http://localhost:8080/api/health && curl -fsS http://localhost:5080/api/health && curl -fsS http://localhost:8000/api/health
       - name: Token iz Keycloaka -> Java, .NET i Python API
         run: tjedan-3/okviri/keycloak/provjera.sh java dotnet python
+      - name: Demonstracijska skripta (okviri/demo/demo_okviri.py) nad sva tri primjera
+        run: |
+          for c in java dotnet python; do
+            python3 tjedan-3/okviri/demo/demo_okviri.py "$c" --bez-pauze
+          done
       - if: failure()
         name: Logovi
         run: |

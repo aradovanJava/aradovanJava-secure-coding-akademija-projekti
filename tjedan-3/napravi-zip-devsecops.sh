@@ -18,8 +18,18 @@ cat > "$STAGE/PROCITAJ.md" <<'TXT'
 
 - `devsecops/` – predložak CI/CD cjevovoda (testovi, SAST, SCA, tajne, DAST, sigurnosna vrata) za vaš T2 projekt:
   `java/`, `dotnet/` ili `python/` (FastAPI). Upute: `devsecops/README.md`.
-- `okviri/` – primjeri Spring Security, ASP.NET Core i FastAPI (+ Keycloak) koji zamjenjuju ručne provjere iz T2.
-  Upute: `okviri/README.md`.
+- `okviri/` – primjeri Spring Security, ASP.NET Core i FastAPI (+ Keycloak) koji zamjenjuju ručne provjere iz T2:
+  `java/`, `dotnet/`, `python/` i `keycloak/`. Upute: `okviri/README.md`.
+
+Demonstracije (na nastavi ili za samostalno ponavljanje), korak po korak:
+
+| Demonstracija | Gdje | Trajanje |
+|---|---|---|
+| Mehanizmi okvira: Keycloak → JWT → API (zadano zabranjeno, vlasništvo, uloge, CORS, zaglavlja, prijava) | `okviri/README.md`, odjeljak „Demonstracija”; skripta `okviri/demo/demo_okviri.py` | ~20 min |
+| DevSecOps: zeleno pokretanje, regresija koju vrata uhvate, lokalno pokretanje | `devsecops/README.md`, odjeljak 6 | ~25 min |
+
+Skripta `okviri/demo/demo_okviri.py` treba samo Python 3.10+ (bez instalacije paketa):
+`python okviri/demo/demo_okviri.py python` (ili `java`, `dotnet`).
 
 Što predajete i do kada: stranica „Upute – nadogradnja projekta (Tjedan 3)” na Moodleu.
 TXT

@@ -34,6 +34,14 @@ docker compose --profile provjera run --rm provjera
 Provjera ispisuje jedan redak po provjeri (`PROŠLO` / `PALO`) i savjet za ono što je palo.
 Cilj: sve automatske provjere `PROŠLO` + pisana analiza (Z1).
 
+Učinak zadataka Z2–Z4 vidi se i **iz aplikacije**: demo „Aplikacija i baza” (README.md, odjeljak 5) spaja se kao
+`<domena>_app` – u Pythonu, Javi ili C#-u – i ispisuje što aplikacijski račun smije. Nakon Z2–Z4 mora pisati
+`Upozorenja: 0`:
+
+```bash
+docker compose --profile aplikacija run --rm aplikacija-python      # ili aplikacija-java, aplikacija-dotnet
+```
+
 > Savjet: **reviziju (Z6) možete uključiti odmah na početku** – tada će zabilježiti i sve vaše
 > promjene prava. Redoslijed zadataka ispod je tematski, ne obavezan.
 

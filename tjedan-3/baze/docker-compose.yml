@@ -1,6 +1,7 @@
 # Laboratorij 3. tjedna: Sigurnost baza podataka (SQL Server 2022 Developer)
 # Pokretanje:   docker compose up -d
 # Provjera:     docker compose --profile provjera run --rm provjera
+# Demo:         docker compose --profile aplikacija run --rm aplikacija-python   (ili aplikacija-java, aplikacija-dotnet)
 # Reset:        docker compose down -v   (pa ispraznite ./backup i ./audit)
 name: sigurnost-baza
 
@@ -76,5 +77,58 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Demo „Aplikacija i baza” (README.md, odjeljak 5): ista provjera u tri tehnologije – spaja se kao aplikacija
+  # (<domena>_app), postavlja SESSION_CONTEXT i ispisuje što aplikacijski račun smije. Ništa ne mijenja u bazi.
+  #   docker compose --profile aplikacija run --rm aplikacija-python
+  aplikacija-python:
+    profiles: ["aplikacija"]
+    build: ./aplikacija/python
+    environment: &demo
+      DOMENA: ${DOMENA:-medtermin}
+      SQL_HOST: sql
+      SQL_PORT: "1433"
+      # Lozinke aplikacije i podrške nakon zadatka Z2.1 (prazno = zatečene lozinke iz postavljanja).
+      APP_LOZINKA: ${APP_LOZINKA:-}
+      PODRSKA_LOZINKA: ${PODRSKA_LOZINKA:-}
+      DEMO_STROGO: ${DEMO_STROGO:-0}
+    depends_on:
+      sql:
+        condition: service_healthy
+    restart: "no"
+
+  #   docker compose --profile aplikacija run --rm aplikacija-java     (prvo pokretanje preuzima Maven ovisnosti)
+  aplikacija-java:
+    profiles: ["aplikacija"]
+    image: maven:3.9-eclipse-temurin-21
+    # Izvorni kod je samo za čitanje; prevodi se u kopiji u kontejneru (na disku ne ostaje target/).
+    entrypoint: ["/bin/sh", "-c", "cp -r /izvor /tmp/app && cd /tmp/app && mvn -q -B compile exec:java"]
+    environment: *demo
+    volumes:
+      - ./aplikacija/java:/izvor:ro
+      - maven:/root/.m2
+    depends_on:
+      sql:
+        condition: service_healthy
+    restart: "no"
+
+  #   docker compose --profile aplikacija run --rm aplikacija-dotnet   (prvo pokretanje preuzima NuGet pakete)
+  aplikacija-dotnet:
+    profiles: ["aplikacija"]
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    entrypoint: ["/bin/sh", "-c", "cp -r /izvor /tmp/app && cd /tmp/app && dotnet run --nologo -v q"]
+    environment:
+      <<: *demo
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    volumes:
+      - ./aplikacija/dotnet:/izvor:ro
+      - nuget:/root/.nuget/packages
+    depends_on:
+      sql:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   podaci:
+  maven:
+  nuget:

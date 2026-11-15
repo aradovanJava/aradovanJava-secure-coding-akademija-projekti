@@ -1,6 +1,7 @@
 name: t3-baze
 # Laboratorij "Sigurnost baza podataka" (3. tjedan): za svaku domenu
 #   početno stanje -> sve automatske provjere PALO; referentno rješenje -> sve PROŠLO.
+#   Demo "Aplikacija i baza" (Python, Java, C#): prije rješenja upozorenja, poslije 0 – isti rezultat u sve tri.
 on:
   push:
     branches: [main]
@@ -82,6 +83,25 @@ jobs:
           echo "::notice::[$DOMENA] početno stanje: $ukupno automatskih provjera, neočekivanih prolaza: $greske"
           [ "$greske" -eq 0 ]
 
+      - name: Upiti iz demonstracije (README, odjeljak 6)
+        run: |
+          docker compose exec -T -e SQLCMDPASSWORD="$SA" sql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -b -d "$(case $DOMENA in medtermin) echo MedTermin;; ulaznica) echo Ulaznica;; kadrovska) echo Kadrovska;; esac)" -Q "
+            SELECT p.name FROM sys.server_role_members m JOIN sys.server_principals r ON r.principal_id = m.role_principal_id JOIN sys.server_principals p ON p.principal_id = m.member_principal_id WHERE r.name = N'sysadmin';
+            SELECT name, is_trustworthy_on FROM sys.databases;
+            EXECUTE AS USER = N'${DOMENA}_app'; SELECT TOP (5) * FROM sys.fn_my_permissions(NULL, 'DATABASE'); REVERT;"
+
+      - name: Demo aplikacije – početno stanje (očekujemo upozorenja)
+        run: |
+          for t in python java dotnet; do
+            docker compose --profile aplikacija run --rm -T "aplikacija-$t" | tee "demo-prije-$t.txt"
+            grep -q '^DEMO|sysadmin|DA' "demo-prije-$t.txt" || { echo "::error::[$DOMENA/$t] demo ne vidi sysadmin"; exit 1; }
+            n=$(sed -n 's/^DEMO|upozorenja|//p' "demo-prije-$t.txt")
+            [ "${n:-0}" -ge 10 ] || { echo "::error::[$DOMENA/$t] očekivano ≥ 10 upozorenja, dobiveno '${n}'"; exit 1; }
+            grep '^DEMO|' "demo-prije-$t.txt" > "demo-prije-$t.sazetak"
+          done
+          diff demo-prije-python.sazetak demo-prije-java.sazetak && diff demo-prije-python.sazetak demo-prije-dotnet.sazetak
+          echo "::notice::[$DOMENA] demo prije rješenja: $(sed -n 's/^DEMO|upozorenja|//p' demo-prije-python.txt) upozorenja, isti rezultat u Pythonu, Javi i C#-u"
+
       - name: Referentno rješenje
         run: |
           docker compose cp "rjesenje/$DOMENA.sql" sql:/tmp/rjesenje.sql
@@ -111,6 +131,22 @@ jobs:
           if [ "$ukupno" -ne "${UKUPNO:-$ukupno}" ]; then echo "::error::[$DOMENA] broj provjera $ukupno ≠ $UKUPNO"; exit 1; fi
           if [ "$palo" -ne 0 ]; then exit 1; fi
           echo "::notice::[$DOMENA] nakon rješenja: svih $ukupno automatskih provjera PROŠLO"
+
+      - name: Demo aplikacije – nakon rješenja (očekujemo 0 upozorenja)
+        run: |
+          for t in python java dotnet; do
+            APP_LOZINKA="$APPL" DEMO_STROGO=1 docker compose --profile aplikacija run --rm -T "aplikacija-$t" | tee "demo-poslije-$t.txt"
+            grep -q '^DEMO|upozorenja|0$' "demo-poslije-$t.txt" || { echo "::error::[$DOMENA/$t] nakon rješenja i dalje ima upozorenja"; exit 1; }
+            grep '^DEMO|' "demo-poslije-$t.txt" > "demo-poslije-$t.sazetak"
+          done
+          diff demo-poslije-python.sazetak demo-poslije-java.sazetak && diff demo-poslije-python.sazetak demo-poslije-dotnet.sazetak
+          {
+            echo "#### Demo aplikacije ($DOMENA) – nakon rješenja"
+            echo '```'
+            sed -n '/^1\. Tko sam/,/^Upozorenja/p' demo-poslije-python.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice::[$DOMENA] demo nakon rješenja: 0 upozorenja u Pythonu, Javi i C#-u"
 
       - name: Početno stanje mora biti ispravno
         if: steps.prije.outcome != 'success'

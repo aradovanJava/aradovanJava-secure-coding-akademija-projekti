@@ -1,0 +1,3 @@
+# Demo „Aplikacija i baza” (Python) – jedina ovisnost je Microsoftov službeni upravljački program za SQL Server.
+# Ne treba zaseban ODBC driver. Verzija je zaključana (kao u projektima: Dependabot / pip-audit je prate).
+mssql-python==1.17.0

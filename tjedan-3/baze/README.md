@@ -13,10 +13,13 @@ Zadaci su u [ZADACI.md](ZADACI.md).
 ## Sadržaj paketa
 
 ```
-docker-compose.yml          SQL Server + jednokratni servisi dozvole, init i provjera
+docker-compose.yml          SQL Server + jednokratni servisi dozvole, init i provjera; profil aplikacija (demo)
 .env.primjer                predložak postavki (kopirajte u .env)
 skripte/postavljanje/       shema i podaci za tri domene + zatečene (loše) postavke – NE MIJENJATI
 skripte/provjera.sql        automatska provjera (T-SQL) + provjera.sh, init.sh, zajednicko.sh
+aplikacija/python/          demo „Aplikacija i baza” – Python (mssql-python)
+aplikacija/java/            isti demo – Java (JDBC, mssql-jdbc)
+aplikacija/dotnet/          isti demo – C# (.NET 10, Microsoft.Data.SqlClient)
 backup/                     ovdje SQL Server sprema kopije baze i certifikata (/var/opt/mssql/backup)
 audit/                      ovdje SQL Server sprema revizijske zapise (/var/opt/mssql/audit)
 ```
@@ -106,7 +109,82 @@ Provjera se spaja administratorskom prijavom iz `.env`. **Kad u zadatku Z2.4 one
 Ako to preskočite, healthcheck se ne može prijaviti, kontejner postaje *unhealthy* i provjera se ne
 pokreće (u reviziji ćete vidjeti neuspjele prijave za `sa` svakih 10 sekundi).
 
-## 5. Reset (početi ispočetka)
+## 5. Demo: aplikacija i baza (Python, Java, C#)
+
+Mali program u tri tehnologije spaja se na bazu **onako kako se spaja vaša aplikacija iz 2. tjedna**: prijavom
+`<domena>_app` (ne `sa`), šifriranom vezom, lozinkom iz varijable okruženja i isključivo parametriziranim upitima, a
+na početku svakog „zahtjeva” postavlja `SESSION_CONTEXT` s prijavljenim korisnikom (za RLS). Zatim ispiše **što taj
+račun stvarno smije**. Ništa ne mijenja u bazi (svaki pokušaj se poništava – `ROLLBACK`). Sve tri inačice daju isti
+rezultat; izaberite tehnologiju svog projekta.
+
+```bash
+docker compose --profile aplikacija run --rm aplikacija-python    # Python (mssql-python)
+docker compose --profile aplikacija run --rm aplikacija-java      # Java (JDBC)
+docker compose --profile aplikacija run --rm aplikacija-dotnet    # C# (ADO.NET)
+```
+
+Ne treba ništa instalirati osim Dockera; prvo pokretanje preuzima sliku i ovisnosti (1–3 minute), sljedeća traju
+nekoliko sekundi. Program ispisuje pet blokova:
+
+| Blok | Što provjerava | Upozorenje `[!]` nestaje nakon |
+|---|---|---|
+| 1. Tko sam u bazi | prijava, korisnik, lozinka (zatečena?), članstvo u `sysadmin`, `db_owner`, `uloga_aplikacija` | Z2.1–Z2.3, Z3.1 |
+| 2. Što račun stvarno može | čitanje `dbo.revizija`, `CREATE TABLE` | Z3.2, Z3.3 |
+| 3. Isti unos na dva načina | `x' OR 1=1 --` kao **parametar** (0 redaka) i **zalijepljen u upit** (SQL injection) | Z4.1–Z4.2 (RLS: i uspješna injekcija vraća samo Anine retke) |
+| 4. Row-Level Security | koliko redaka glavne tablice vide ana, marko i sesija bez korisnika | Z4.1–Z4.2 |
+| 5. Korisnička podrška | OIB i e-mail (maskirani?), smije li čitati `password_hash` | Z2.5, Z4.3–Z4.5 |
+
+Na kraju je broj upozorenja i strojno čitljiv sažetak (`DEMO|ključ|vrijednost`). **Prije** zadataka očekujte desetak
+upozorenja; **poslije** zadataka Z2–Z4 mora biti `Upozorenja: 0`. Uz `DEMO_STROGO=1` program vraća izlazni kod 1 dok
+postoji ijedno upozorenje (korisno u skriptama).
+
+**Nakon zadatka Z2.1** aplikacijska prijava ima novu lozinku: upišite je u `.env` kao `APP_LOZINKA=…` (i
+`PODRSKA_LOZINKA=…` ako ste promijenili i tu). Demo lozinku čita iz okruženja – **nikad** iz koda, kao i prava
+aplikacija. Dok `APP_LOZINKA` nije postavljena, demo pokušava sa zatečenom lozinkom; ako ona još radi, to je nalaz.
+
+**Lokalno iz IDE-a** (poslužitelj je na `localhost`, port iz `.env`):
+
+| | Pokretanje | Postavke |
+|---|---|---|
+| Python 3.10+ | `cd aplikacija/python`, `python -m venv .venv`, aktivirajte, `pip install -r requirements.txt`, `python demo.py` | varijable `DOMENA`, `SQL_PORT`, `APP_LOZINKA` u terminalu ili u *Run configuration* (PyCharm / VS Code `launch.json` → `env`) |
+| Java 21 | `cd aplikacija/java`, `./mvnw -q compile exec:java` (Windows: `mvnw.cmd …`) ili IntelliJ: otvorite `pom.xml`, *Run* `Demo.main` | *Run configuration* → *Environment variables* |
+| .NET 10 | `cd aplikacija/dotnet`, `dotnet run` ili Visual Studio / Rider: otvorite `BazeDemo.csproj` | *Debug properties* → *Environment variables* |
+
+Na Linuxu `mssql-python` traži i sistemske biblioteke (Debian/Ubuntu: `libltdl7 libkrb5-3 libgssapi-krb5-2`); na
+Windowsu i macOS-u dolazi sve s paketom. Ako lokalno ne radi, koristite Docker inačicu – rezultat je isti.
+
+Na što obratiti pažnju u kodu (sve tri inačice imaju iste komentare):
+
+- **niz za spajanje bez lozinke u kodu**, `Encrypt=yes`; `TrustServerCertificate=yes` samo u laboratoriju
+  (samopotpisani certifikat) – u produkciji certifikat kojem klijent vjeruje;
+- **parametri** (`?` / `@p0`) za sve vrijednosti; nazivi tablica i stupaca dolaze samo iz popisa dopuštenih
+  vrijednosti (ne mogu biti parametri – usporedite S08 iz T2);
+- **`sp_set_session_context … @read_only = 1`** odmah nakon spajanja: ni kasniji kod ni SQL injection u istoj sesiji
+  ne mogu promijeniti identitet za RLS.
+
+## 6. Demonstracija korak po korak (na nastavi ili za samostalno ponavljanje)
+
+Oko 25 minuta; pokazuje zašto je baza **druga linija obrane**. Isti koraci služe i kao provjera vašeg rješenja.
+
+**Priprema (prije nastave, treba internet):** `cp .env.primjer .env` (postavite `DOMENA` i lozinku), `docker compose
+up -d`, pričekajte `init` (`docker compose logs -f init`), zatim jednom
+`docker compose --profile aplikacija build` i po jedno pokretanje demoa u tehnologiji koju ćete pokazivati
+(preuzme ovisnosti). Spojite se iz VS Codea (ekstenzija *SQL Server (mssql)*) ili SSMS-a (odjeljak 3).
+
+| Korak | Naredba ili upit | Što pokazati |
+|---|---|---|
+| 1. Zatečeno stanje | `docker compose --profile provjera run --rm provjera` | sve automatske provjere `PALO`; tablica je ujedno popis tema predavanja |
+| 2. Pogled aplikacije | `docker compose --profile aplikacija run --rm aplikacija-python` | aplikacija je `sysadmin` i `db_owner`, mijenja shemu, čita dnevnik; injekcija vraća **sve** zapise; podrška vidi OIB i hasheve lozinki |
+| 3. Katalog | `SELECT p.name FROM sys.server_role_members m JOIN sys.server_principals r ON r.principal_id = m.role_principal_id JOIN sys.server_principals p ON p.principal_id = m.member_principal_id WHERE r.name = N'sysadmin';` i `SELECT name, is_trustworthy_on FROM sys.databases;` | stanje se dokazuje **upitom nad katalogom**, ne čitanjem skripti (zadatak Z1) |
+| 4. `EXECUTE AS` | `EXECUTE AS USER = N'<domena>_app'; SELECT * FROM sys.fn_my_permissions(NULL, 'DATABASE'); REVERT;` | učinkovita prava aplikacije – isto što demo radi iz programa |
+| 5. Jedna mjera uživo | npr. Z2.2: `ALTER SERVER ROLE sysadmin DROP MEMBER [<domena>_app];` pa ponovno korak 2 | upozorenje „član sysadmin” nestaje; provjera Z2.2 prelazi u `PROŠLO` |
+| 6. Ciljano stanje | nakon svih zadataka Z2–Z4: korak 2 s `APP_LOZINKA` u `.env` | `Upozorenja: 0`; parametar vraća 0 redaka, a **i uspješna injekcija** vraća samo Anine retke (RLS) |
+| 7. Reset | `docker compose down -v` i pražnjenje `backup/` i `audit/` (odjeljak 7) | svaka demonstracija kreće od istog lošeg stanja |
+
+Dobro pitanje za raspravu nakon koraka 6: *Ako je SQL injection uspio, što je napadač dobio?* – ništa više od onoga što
+smije prijavljeni korisnik. Zato su parametrizirani upiti prva, a minimalne ovlasti i RLS druga linija obrane.
+
+## 7. Reset (početi ispočetka)
 
 ```bash
 docker compose down -v        # briše kontejnere i volumen s bazama (sve promjene!)
@@ -118,14 +196,14 @@ Na Linuxu su datoteke u `backup/` i `audit/` vlasništvo korisnika uid 10001; ob
 `sudo rm -f backup/*.* audit/*.*` ili iz kontejnera prije `down -v`:
 `docker compose exec sql sh -c 'rm -f /var/opt/mssql/backup/* /var/opt/mssql/audit/*'`.
 
-## 6. Što se predaje
+## 8. Što se predaje
 
 1. Vaša T-SQL skripta (ili numerirane skripte) kojom na svježoj bazi riješite zadatke Z2–Z8,
    bez lozinki upisanih u skriptu.
 2. Ispis provjere: `docker compose --profile provjera run --rm provjera > provjera.txt`.
 3. Kratka pisana analiza prijetnji zatečenog stanja (Z1) i odgovori na pitanja iz zadataka.
 
-## 7. Česti problemi
+## 9. Česti problemi
 
 | Simptom | Rješenje |
 |---|---|
@@ -136,8 +214,11 @@ Na Linuxu su datoteke u `backup/` i `audit/` vlasništvo korisnika uid 10001; ob
 | `init` javlja `$'\r': command not found` | Skripte su spremljene s Windows prijelomima redaka; ponovno raspakirajte ZIP (ne uređujte `.sh` u Notepadu). |
 | Provjera: „ne mogu se prijaviti … kao 'sa'” | Onemogućili ste `sa`: postavite `ADMIN_LOGIN`/`ADMIN_PASSWORD` u `.env` i `docker compose up -d`. |
 | Provjera Z6.5 povremeno pada odmah nakon uključivanja revizije | Pokrenite provjeru ponovno (zapisi se upisuju s kratkom odgodom). |
+| Demo: „Ne mogu se spojiti kao <domena>_app” | Poslužitelj još nije spreman (`docker compose ps`) ili je lozinka promijenjena u Z2.1 – upišite `APP_LOZINKA` u `.env`. |
+| Demo: Login failed for user 'podrska' (blok 5 preskočen) | Promijenili ste lozinku podrške – upišite `PODRSKA_LOZINKA` u `.env`. |
+| Demo (Java/.NET) prvi put dugo traje | Preuzimaju se Maven/NuGet ovisnosti u Docker volumene `maven`/`nuget`; sljedeća pokretanja su brza. |
 
-## 8. Napomene o SQL Serveru na Linuxu
+## 10. Napomene o SQL Serveru na Linuxu
 
 - `xp_cmdshell` na Linuxu nije podržan (`sp_configure` javlja grešku 15392); u zadatku Z8 ga svejedno
   isključujete (u TRY/CATCH bloku) jer skripta mora vrijediti i za Windows poslužitelj.
