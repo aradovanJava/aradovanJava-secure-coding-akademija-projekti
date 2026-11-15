@@ -16,5 +16,8 @@
   <ItemGroup>
     <!-- Microsoftov upravljački program za SQL Server; verzija je zaključana (prate je Dependabot / NuGetAudit). -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.0" />
+    <!-- Tranzitivna ovisnost SqlClienta (9.0.x) ima poznate ranjivosti (NuGetAudit NU1902/NU1903):
+         izravna referenca podiže je na zakrpanu verziju – isti postupak kao S06 u T2. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 </Project>
