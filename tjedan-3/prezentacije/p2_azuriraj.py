@@ -66,7 +66,7 @@ zamijeni_tekst(S[26], "ponovno docker compose up -d.", "ponovno docker compose u
 
 # ------------------------------------------------------------------ 27: završni slajd
 zamijeni_tekst(S[27], "Slijede tri dana nadogradnje vlastitog projekta",
-               "Sljedeće (Dan 3): radionica – rizik i usklađenost")
+               "Sljedeće (Dan 3): ispitivanje, rizik i usklađenost")
 
 # ------------------------------------------------------------------ bilješke
 from biljeske_p2 import BILJESKE  # noqa: E402

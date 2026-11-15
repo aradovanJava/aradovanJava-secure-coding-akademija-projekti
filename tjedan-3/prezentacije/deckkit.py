@@ -126,3 +126,132 @@ def postavi_odlomke_s_oznakom(shape, retci):
 def biljeske(slide, tekst):
     tf = slide.notes_slide.notes_text_frame
     tf.text = tekst.strip()
+
+
+# ---------------------------------------------------------------- tablice
+def _tekst_celije(tc, tekst, bold=None):
+    txb = tc.find(qn("a:txBody"))
+    ps = txb.findall(qn("a:p"))
+    p0 = ps[0]
+    for p in ps[1:]:
+        txb.remove(p)
+    runs = p0.findall(qn("a:r"))
+    if not runs:
+        r = etree.SubElement(p0, qn("a:r"))
+        etree.SubElement(r, qn("a:rPr"), sz="900")
+        etree.SubElement(r, qn("a:t"))
+        runs = [r]
+    for r in runs[1:]:
+        p0.remove(r)
+    end = p0.find(qn("a:endParaRPr"))
+    if end is not None:
+        p0.remove(end)
+    runs[0].find(qn("a:t")).text = tekst
+    if bold is not None:
+        runs[0].find(qn("a:rPr")).set("b", "1" if bold else "0")
+
+
+def postavi_tablicu(shape, redci, sirine=None, podebljaj_prvi_stupac=False, sz=None):
+    """redci[0] = zaglavlje. Broj stupaca i redaka prilagođava se kloniranjem postojećih (čuva stil)."""
+    tbl = shape.table._tbl
+    grid = tbl.find(qn("a:tblGrid"))
+    cols = grid.findall(qn("a:gridCol"))
+    trs = tbl.findall(qn("a:tr"))
+    n_st = len(redci[0])
+    # stupci
+    while len(cols) < n_st:
+        novi = copy.deepcopy(cols[-1]); grid.append(novi); cols.append(novi)
+        for tr in trs:
+            tr.append(copy.deepcopy(tr.findall(qn("a:tc"))[-1]))
+    while len(cols) > n_st:
+        grid.remove(cols.pop())
+        for tr in trs:
+            tr.remove(tr.findall(qn("a:tc"))[-1])
+    # retci (predložak za nove: zadnji podatkovni redak)
+    predlozak = copy.deepcopy(trs[2] if len(trs) > 2 else trs[-1])
+    while len(trs) < len(redci):
+        novi = copy.deepcopy(predlozak); tbl.append(novi); trs.append(novi)
+    while len(trs) > len(redci):
+        tbl.remove(trs.pop())
+    # širine – uvijek ukupno koliko je širok okvir tablice
+    ukupno = int(shape.width)
+    if not sirine:
+        sirine = [int(c.get("w")) for c in cols]
+    s = sum(sirine)
+    for c, w in zip(cols, sirine):
+        c.set("w", str(int(ukupno * w / s)))
+    # tekst
+    for i, (tr, red) in enumerate(zip(trs, redci)):
+        for j, (tc, tekst) in enumerate(zip(tr.findall(qn("a:tc")), red)):
+            b = None
+            if isinstance(tekst, tuple):
+                tekst, b = tekst
+            elif podebljaj_prvi_stupac and j == 0 and i > 0:
+                b = True
+            _tekst_celije(tc, tekst, b)
+            if sz and i > 0:
+                tc.find(qn("a:txBody")).find(qn("a:p")).find(qn("a:r")).find(qn("a:rPr")).set("sz", str(sz))
+
+
+# ---------------------------------------------------------------- ikone
+ASVG = "http://schemas.microsoft.com/office/drawing/2016/SVG/main"
+RT_IMAGE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+
+
+def _svg_blip(pic):
+    return pic._element.find(".//{%s}svgBlip" % ASVG)
+
+
+def ikone_po_imenu(prs):
+    """{ime ikone: (slide, pic)} iz svih slajdova (naziv oblika 'Ikona <ime>')."""
+    out = {}
+    for s in prs.slides:
+        for sh in s.shapes:
+            if sh.shape_type == 13 and sh.name.startswith("Ikona "):
+                out.setdefault(sh.name[6:], (s, sh))
+    return out
+
+
+def zamijeni_ikonu(slide, pic, izvor):
+    """Postavi na `pic` (slajd `slide`) sliku iz izvora (slide, pic) – kopira odnos prema istom SVG dijelu."""
+    src_slide, src_pic = izvor
+    rid = _svg_blip(src_pic).get(qn("r:embed"))
+    part = src_slide.part.related_part(rid)
+    novi = slide.part.relate_to(part, RT_IMAGE)
+    _svg_blip(pic).set(qn("r:embed"), novi)
+    ime = src_pic.name[6:]
+    pic._element.find(qn("p:nvPicPr")).find(qn("p:cNvPr")).set("name", "Ikona " + ime)
+    pic._element.find(qn("p:nvPicPr")).find(qn("p:cNvPr")).set("descr", "Ikona: " + ime)
+
+
+def obrisi_oblik(shape):
+    el = shape._element
+    el.getparent().remove(el)
+
+
+def postavi_tekst(shape, tekst):
+    """Prvi run prvog odlomka dobiva tekst; ostali runovi i odlomci se brišu (formatiranje ostaje)."""
+    tx = shape.text_frame._txBody
+    ps = tx.findall(qn("a:p"))
+    for p in ps[1:]:
+        tx.remove(p)
+    runs = ps[0].findall(qn("a:r"))
+    runs[0].find(qn("a:t")).text = tekst
+    for r in runs[1:]:
+        ps[0].remove(r)
+
+
+def postavi_retke(shape, retci):
+    """Okvir s više odlomaka istog stila (svaki odlomak jedan run): retci = [tekst, …] (kopira prvi odlomak)."""
+    tx = shape.text_frame._txBody
+    ps = tx.findall(qn("a:p"))
+    predlozak = copy.deepcopy(ps[0])
+    for p in ps:
+        tx.remove(p)
+    for t in retci:
+        p = copy.deepcopy(predlozak)
+        runs = p.findall(qn("a:r"))
+        runs[0].find(qn("a:t")).text = t
+        for r in runs[1:]:
+            p.remove(r)
+        tx.append(p)
