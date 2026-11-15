@@ -45,7 +45,8 @@
         }
       ],
       "realmRoles": [
-        "KORISNIK"
+        "KORISNIK",
+        "default-roles-akademija"
       ]
     },
     {
@@ -63,7 +64,8 @@
         }
       ],
       "realmRoles": [
-        "KORISNIK"
+        "KORISNIK",
+        "default-roles-akademija"
       ]
     },
     {
@@ -81,7 +83,8 @@
         }
       ],
       "realmRoles": [
-        "LIJECNIK"
+        "LIJECNIK",
+        "default-roles-akademija"
       ]
     },
     {
@@ -99,7 +102,8 @@
         }
       ],
       "realmRoles": [
-        "ADMIN"
+        "ADMIN",
+        "default-roles-akademija"
       ]
     }
   ],

@@ -30,6 +30,10 @@ docker compose logs -f        # (Ctrl+C) – čekajte "Listening on: http://0.0.
 | `medtermin-api` | povjerljivi, bez tokova | – | samo *audience*: API prihvaća token samo ako `aud` sadrži `medtermin-api` |
 | `medtermin-dev-cli` | javni | **password grant – SAMO ZA RAZVOJ** | `curl` i automatske provjere; zastario tok (OAuth 2.1 ga uklanja) – nikad u produkciji |
 
+Svi korisnici imaju i zadanu ulogu realma `default-roles-akademija` (uloge klijenta `account` – `view-profile`,
+`manage-account`). Bez nje se korisnik prijavi, ali korisnička konzola (`/account`) javi „Something went wrong”:
+pri uvozu realma iz JSON-a Keycloak zadanu ulogu ne dodjeljuje sam.
+
 Oba klijenta imaju *audience mapper* koji u access token dodaje `aud: medtermin-api`. Uloge su u claimu
 `realm_access.roles`, korisničko ime u `preferred_username` – API-ji ih mapiraju u uloge okvira.
 Realm ima uključenu zaštitu od pogađanja lozinki (*brute force detection*, 5 pokušaja) i politiku lozinki.

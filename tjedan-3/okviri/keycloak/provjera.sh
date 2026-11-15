@@ -21,6 +21,9 @@ import base64, json, sys
 p = sys.argv[1].split(".")[1]; p += "=" * (-len(p) % 4)
 c = json.loads(base64.urlsafe_b64decode(p))
 print("token za ana: iss=%s aud=%s preferred_username=%s realm_access=%s" % (c["iss"], c.get("aud"), c.get("preferred_username"), c.get("realm_access")))
+# korisnička konzola (/account) treba zadanu ulogu realma – pri uvozu JSON-a Keycloak je ne dodjeljuje sam
+if "manage-account" not in c.get("resource_access", {}).get("account", {}).get("roles", []):
+    sys.exit("::error::ana nema ulogu account/manage-account – u realm-akademija.json dodajte default-roles-akademija")
 PY
 
 greske=0
