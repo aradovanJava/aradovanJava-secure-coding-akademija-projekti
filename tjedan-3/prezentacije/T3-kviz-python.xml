@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+<question type="multichoice">
+<name><text>T3-31 FastAPI – zadano zabranjeno</text></name>
+<questiontext format="html"><text><![CDATA[<p>U FastAPI primjeru iz paketa <em>okviri</em> svaka ruta bez oznake <code>@javno</code> traži valjan token, iako rute nemaju nikakvu provjeru u svom kodu:</p><pre style="background:#1b1b22;color:#f2f2f2;padding:8px;border-radius:4px;font-size:90%"><code>app = FastAPI(
+    debug=False,
+    dependencies=[Depends(zadano_zabranjeno)],
+)</code></pre><p><strong>Kojim mehanizmom je to postignuto?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Usporedite s anyRequest().authenticated() u Springu i FallbackPolicy u ASP.NET Coreu: zadano zabranjeno.</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="100" format="html"><text><![CDATA[Globalnom ovisnošću koju FastAPI izvršava prije svake rute]]></text><feedback format="html"><text><![CDATA[Točno – zaštita je opt-out (@javno), a ne opt-in, pa je i nova ruta zaštićena.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Parametrom korisnik: PrijavljeniKorisnik koji svaka ruta mora sama navesti]]></text><feedback format="html"><text><![CDATA[To je opt-in: zaboravljeni parametar znači javnu rutu – upravo to globalna ovisnost sprječava.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Starletteovim CORSMiddlewareom s popisom dopuštenih origina]]></text><feedback format="html"><text><![CDATA[CORS određuje koji JavaScript s druge stranice smije čitati odgovor; to nije autentikacija.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Postavkom debug=False]]></text><feedback format="html"><text><![CDATA[debug=False samo skriva traceback u odgovoru na grešku.]]></text></feedback></answer>
+</question>
+<question type="multichoice">
+<name><text>T3-32 PyJWT – popis algoritama</text></name>
+<questiontext format="html"><text><![CDATA[<p>Provjera tokena u FastAPI primjeru:</p><pre style="background:#1b1b22;color:#f2f2f2;padding:8px;border-radius:4px;font-size:90%"><code>ALGORITMI = [&quot;RS256&quot;]
+claims = jwt.decode(token, kljuc.key, algorithms=ALGORITMI,
+                    issuer=issuer, audience=audience)</code></pre><p><strong>Zašto je popis dopuštenih algoritama zadan u kodu, a ne preuzet iz zaglavlja tokena?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Usporedite s vlastitim JWT kodom iz T1 (Lab12), gdje je alg: none prolazio.</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="100" format="html"><text><![CDATA[Da napadač ne može sam odabrati algoritam (npr. alg: none)]]></text><feedback format="html"><text><![CDATA[Točno – algoritam iz zaglavlja tokena je podatak koji kontrolira napadač.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Zato što je RS256 brži od HS256 pa poslužitelj pod opterećenjem brže provjerava tokene]]></text><feedback format="html"><text><![CDATA[Brzina nije razlog; razlog je da napadač ne bira način provjere.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Jer Keycloak ne izdaje drugačije tokene]]></text><feedback format="html"><text><![CDATA[Keycloak podržava više algoritama; provjera ih svejedno mora ograničiti.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Da token istekne nakon pet minuta]]></text><feedback format="html"><text><![CDATA[Rok valjanosti određuje claim exp, ne algoritam.]]></text></feedback></answer>
+</question>
+<question type="multichoice">
+<name><text>T3-33 FastAPI – odgovor 422</text></name>
+<questiontext format="html"><text><![CDATA[<p>FastAPI na neispravan zahtjev zadano vraća odgovor <strong>422</strong> s popisom grešaka validacije. Primjer iz paketa <em>okviri</em> taj odgovor pretvara u <strong>400</strong> s općenitom porukom.</p><p><strong>Koji je sigurnosni razlog?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Test test_lozinke_i_prijava.py provjerava da odgovor 400 ne sadrži unesenu lozinku.</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="0" format="html"><text><![CDATA[HTTP 422 nije dio specifikacije pa ga preglednici ne prikazuju]]></text><feedback format="html"><text><![CDATA[422 je standardni status; razlog je sadržaj odgovora.]]></text></feedback></answer>
+<answer fraction="100" format="html"><text><![CDATA[Zadani odgovor 422 vraća i unesene vrijednosti, pa i lozinku iz tijela zahtjeva]]></text><feedback format="html"><text><![CDATA[Točno – greška validacije ne smije vraćati tajne natrag klijentu (i u logove posrednika).]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Odgovor 400 automatski uključuje ograničenje broja pokušaja prijave po IP adresi klijenta]]></text><feedback format="html"><text><![CDATA[Ograničenje pokušaja je zaseban mehanizam (limits).]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Status 400 sprječava napad CSRF]]></text><feedback format="html"><text><![CDATA[Statusni kod nema veze s CSRF-om.]]></text></feedback></answer>
+</question>
+<question type="multichoice">
+<name><text>T3-34 pwdlib – stari hashevi</text></name>
+<questiontext format="html"><text><![CDATA[<p>Korisnik čija je lozinka spremljena kao SHA-256 bez soli (iz T2) uspješno se prijavi u FastAPI primjer. Hasher je složen ovako:</p><pre style="background:#1b1b22;color:#f2f2f2;padding:8px;border-radius:4px;font-size:90%"><code>PasswordHash((Argon2Hasher(), BcryptHasher(), StariSha256()))
+ispravna, novi_hash = hasher.verify_and_update(lozinka, stari)</code></pre><p><strong>Što se događa?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Migracija hasheva bez prisilne promjene lozinki.</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="0" format="html"><text><![CDATA[Prijava se odbija i korisnik mora resetirati lozinku]]></text><feedback format="html"><text><![CDATA[Nije potrebno – stari hash se može provjeriti i zamijeniti pri prijavi.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Lozinka se privremeno sprema u čistom tekstu dok se ne napravi novi hash]]></text><feedback format="html"><text><![CDATA[Lozinka se nikad ne sprema u čistom tekstu.]]></text></feedback></answer>
+<answer fraction="100" format="html"><text><![CDATA[Provjeri se stari hash, a sprema se novi Argon2id hash]]></text><feedback format="html"><text><![CDATA[Točno – kao DelegatingPasswordEncoder (Java) i SuccessRehashNeeded (.NET).]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[SHA-256 se ponovno izračuna, ovaj put sa soli]]></text><feedback format="html"><text><![CDATA[Novi hash koristi prvi (trenutni) algoritam u nizu – Argon2id.]]></text></feedback></answer>
+</question>
+<question type="multichoice">
+<name><text>T3-35 Tajna bez zadane vrijednosti</text></name>
+<questiontext format="html"><text><![CDATA[<p>Postavke FastAPI primjera:</p><pre style="background:#1b1b22;color:#f2f2f2;padding:8px;border-radius:4px;font-size:90%"><code>class Postavke(BaseSettings):
+    obavijesti_api_kljuc: SecretStr = Field(min_length=16)</code></pre><p><strong>Što se dogodi ako se aplikacija pokrene bez varijable OKVIRI_OBAVIJESTI_API_KLJUC (i bez .env datoteke)?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Isto u .NET primjeru: ValidateOnStart za Obavijesti:ApiKljuc.</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="100" format="html"><text><![CDATA[Aplikacija se ne pokrene – postavke se provjere pri pokretanju]]></text><feedback format="html"><text><![CDATA[Točno – fail fast: bolje ne raditi nego tiho raditi s pogrešnom ili razvojnom tajnom.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Koristi se zadani razvojni ključ iz koda]]></text><feedback format="html"><text><![CDATA[Polje namjerno nema zadanu vrijednost.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Aplikacija se pokrene, a ključ traži tek kod prvog slanja obavijesti]]></text><feedback format="html"><text><![CDATA[Provjera je pri pokretanju, a ne kod prve uporabe.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[pydantic generira nasumični ključ i zapiše ga u .env]]></text><feedback format="html"><text><![CDATA[pydantic-settings samo čita postavke, ne generira tajne.]]></text></feedback></answer>
+</question>
+<question type="multichoice">
+<name><text>T3-36 mssql-python – SESSION_CONTEXT</text></name>
+<questiontext format="html"><text><![CDATA[<p>Aplikacija na početku svakog zahtjeva, nakon prijave korisnika, izvršava:</p><pre style="background:#1b1b22;color:#f2f2f2;padding:8px;border-radius:4px;font-size:90%"><code>kursor.execute(
+    &quot;EXEC sp_set_session_context @key = N&#x27;korisnik&#x27;,&quot;
+    &quot; @value = ?, @read_only = 1&quot;, korisnik)</code></pre><p><strong>Što postiže @read_only = 1?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Predikat RLS-a čita SESSION_CONTEXT(N'korisnik').</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="0" format="html"><text><![CDATA[Korisnik u toj sesiji smije samo čitati podatke, a ne i mijenjati ih]]></text><feedback format="html"><text><![CDATA[To nije dozvola nad podacima – odnosi se samo na vrijednost u kontekstu.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Vrijednost se sprema u bazu i vrijedi za sve veze tog korisnika]]></text><feedback format="html"><text><![CDATA[SESSION_CONTEXT vrijedi samo za tu sesiju (vezu).]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Baza odbija sve upite u toj sesiji koji nisu parametrizirani]]></text><feedback format="html"><text><![CDATA[Baza ne zna je li upit parametriziran u aplikaciji.]]></text></feedback></answer>
+<answer fraction="100" format="html"><text><![CDATA[Vrijednost se u toj sesiji više ne može promijeniti]]></text><feedback format="html"><text><![CDATA[Točno – identitet za RLS ostaje onaj koji je postavila aplikacija.]]></text></feedback></answer>
+</question>
+<question type="multichoice">
+<name><text>T3-37 Demo – injekcija i RLS</text></name>
+<questiontext format="html"><text><![CDATA[<p>Demo „Aplikacija i baza” nakon zadataka Z2–Z4 ispisuje:</p><pre style="background:#1b1b22;color:#f2f2f2;padding:8px;border-radius:4px;font-size:90%"><code>3. Isti unos na dva načina (sesija korisnika ana, unos: x&#x27; OR 1=1 --)
+   parametar (?) .............. 0 redaka
+   lijepljenje u tekst upita .. 2 retka  (injekcija uspijeva, ali RLS
+                                          vraća samo Anine zapise)</code></pre><p><strong>Koja mjera u bazi je zaslužna što i uspješna injekcija vraća samo Anine retke?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Prva linija obrane je parametrizirani upit; RLS i minimalna prava ograničavaju štetu kad ona zakaže.</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="0" format="html"><text><![CDATA[Dynamic Data Masking na stupcu OIB]]></text><feedback format="html"><text><![CDATA[DDM mijenja prikaz vrijednosti, ne filtrira retke.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[TDE šifriranje baze]]></text><feedback format="html"><text><![CDATA[TDE štiti datoteke na disku; za korisnika baze podaci su vidljivi.]]></text></feedback></answer>
+<answer fraction="100" format="html"><text><![CDATA[Row-Level Security s predikatom nad SESSION_CONTEXT]]></text><feedback format="html"><text><![CDATA[Točno – baza filtrira retke prema prijavljenom korisniku: druga linija obrane.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Revizija SELECT naredbi u database audit specifikaciji]]></text><feedback format="html"><text><![CDATA[Revizija bilježi pristup, ali ga ne ograničava.]]></text></feedback></answer>
+</question>
+<question type="multichoice">
+<name><text>T3-38 Pipeline – Python regresija</text></name>
+<questiontext format="html"><text><![CDATA[<p>U Python projektu netko vrati <code>PyYAML==5.3.1</code> u <code>requirements.txt</code> i <code>yaml.load(tijelo, Loader=yaml.FullLoader)</code> u kod te otvori pull request.</p><p><strong>Što u predlošku DevSecOps cjevovoda sigurno blokira spajanje?</strong></p>]]></text></questiontext>
+<generalfeedback format="html"><text><![CDATA[<p>Zato vrata ne smiju biti „samo upozorenje”.</p>]]></text></generalfeedback>
+<defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden>
+<single>true</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>0</showstandardinstruction>
+<correctfeedback format="html"><text>Točno.</text></correctfeedback>
+<partiallycorrectfeedback format="html"><text></text></partiallycorrectfeedback>
+<incorrectfeedback format="html"><text>Netočno.</text></incorrectfeedback>
+<answer fraction="0" format="html"><text><![CDATA[Bandit, jer pravilo B506 uvijek blokira]]></text><feedback format="html"><text><![CDATA[Bandit ocjenjuje B506 kao MEDIUM, pa je u ovoj politici samo informativan.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[gitleaks, jer je promijenjena datoteka s ovisnostima]]></text><feedback format="html"><text><![CDATA[gitleaks traži tajne, ne ranjive ovisnosti.]]></text></feedback></answer>
+<answer fraction="100" format="html"><text><![CDATA[SCA: OSV-Scanner i pip-audit (poznata ranjivost)]]></text><feedback format="html"><text><![CDATA[Točno – PyYAML 5.3.1 ima ranjivost CVSS 9,8, a pravilo python-yaml-load-bez-safeloader hvata kod.]]></text></feedback></answer>
+<answer fraction="0" format="html"><text><![CDATA[Ništa – sigurnosna vrata u predlošku postoje samo za Java i .NET projekte]]></text><feedback format="html"><text><![CDATA[Predložak devsecops/python ima ista vrata kao Java i .NET.]]></text></feedback></answer>
+</question>
+</quiz>
