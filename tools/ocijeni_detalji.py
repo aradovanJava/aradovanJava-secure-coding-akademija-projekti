@@ -245,8 +245,11 @@ def main():
     js = json.dumps(out, ensure_ascii=False, indent=1)
     if a.json:
         open(a.json, "w", encoding="utf-8").write(js)
+    import base64, gzip
+    b = base64.b64encode(gzip.compress(js.encode("utf-8"))).decode()
     print("===DETALJI-POCETAK===")
-    print(js)
+    for i in range(0, len(b), 4000):
+        print(f"B64 {i // 4000:04d} {b[i:i + 4000]}")
     print("===DETALJI-KRAJ===")
     shutil.rmtree(work, ignore_errors=True)
 
