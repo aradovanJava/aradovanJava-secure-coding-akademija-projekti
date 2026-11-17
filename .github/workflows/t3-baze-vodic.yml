@@ -1,0 +1,118 @@
+name: t3-baze-vodic
+
+# Provjerava vodič za predavača (tjedan-3/baze/vodic): koraci K1–K9 izvode se redom na svježoj bazi
+# za sve tri domene; nakon svakog koraka testni upiti iz vodiča i automatska provjera (kumulativno PROŠLO).
+on:
+  push:
+    paths:
+      - 'tjedan-3/baze/vodic/**'
+      - 'tjedan-3/baze/skripte/**'
+      - 'tjedan-3/baze/docker-compose.yml'
+      - '.github/workflows/t3-baze-vodic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  vodic:
+    name: vodič (${{ matrix.domena }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        domena: [medtermin, ulaznica, kadrovska]
+    defaults:
+      run:
+        working-directory: tjedan-3/baze
+    env:
+      DOMENA: ${{ matrix.domena }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Priprema .env i SQL iz vodiča
+        run: |
+          SA="Sa_$(openssl rand -hex 10)Q1"
+          echo "::add-mask::$SA"
+          echo "SA=$SA" >> "$GITHUB_ENV"
+          cp .env.primjer .env
+          sed -i "s/^DOMENA=.*/DOMENA=$DOMENA/; s/^MSSQL_SA_PASSWORD=.*/MSSQL_SA_PASSWORD=$SA/" .env
+          python3 vodic/generiraj_sql.py "$DOMENA" /tmp/vodic
+          # Lozinke iz vodiča (:setvar u K2) – iste vrijednosti trebaju .env i demo.
+          ADM=$(sed -n 's/^:setvar ADMIN_LOZINKA *"\(.*\)"/\1/p' /tmp/vodic/korak-K2.sql)
+          APPL=$(sed -n 's/^:setvar APP_LOZINKA *"\(.*\)"/\1/p' /tmp/vodic/korak-K2.sql)
+          { echo "ADM=$ADM"; echo "APPL=$APPL"; } >> "$GITHUB_ENV"
+
+      - name: SQL Server + init
+        run: |
+          docker compose up -d sql
+          docker compose run --rm -T init
+
+      - name: Koraci K1–K9 s testovima i provjerom
+        run: |
+          mkdir -p /tmp/izlaz
+          sqlcmd_kao () {  # $1 = prijava, $2 = lozinka, $3 = datoteka
+            docker compose cp "$3" sql:/tmp/skripta.sql >/dev/null < /dev/null
+            docker compose exec -T -e SQLCMDPASSWORD="$2" sql /opt/mssql-tools18/bin/sqlcmd \
+              -C -S localhost -U "$1" -b -I -f 65001 -W -s ' | ' -i /tmp/skripta.sql < /dev/null
+          }
+          greske=0
+          while read -r korak ocekivano; do
+            echo "::group::$korak – izvođenje"
+            sqlcmd_kao sa "$SA" "/tmp/vodic/korak-$korak.sql" | tee "/tmp/izlaz/$korak-korak.txt"
+            echo "::endgroup::"
+            if [ "$korak" = K9 ]; then
+              sed -i "s/^ADMIN_LOGIN=.*/ADMIN_LOGIN=dba_admin/; s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=$ADM/; s/^APP_LOZINKA=.*/APP_LOZINKA=$APPL/" .env
+              docker compose up -d sql < /dev/null
+              for i in $(seq 1 60); do docker compose ps sql < /dev/null | grep -q healthy && break; sleep 2; done
+              PRIJAVA=dba_admin; LOZ="$ADM"
+            else
+              PRIJAVA=sa; LOZ="$SA"
+            fi
+            echo "::group::$korak – testovi iz vodiča"
+            sqlcmd_kao "$PRIJAVA" "$LOZ" "/tmp/vodic/test-$korak.sql" | tee "/tmp/izlaz/$korak-test.txt"
+            echo "::endgroup::"
+            for pokusaj in 1 2; do
+              docker compose --profile provjera run --rm -T provjera > "/tmp/izlaz/$korak-provjera.txt" < /dev/null || true
+              nedostaje=""
+              for z in $ocekivano; do
+                grep -q "^REZULTAT|$z|PROŠLO" "/tmp/izlaz/$korak-provjera.txt" || nedostaje="$nedostaje $z"
+              done
+              [ -z "$nedostaje" ] && break
+              sleep 3
+            done
+            if [ -n "$nedostaje" ]; then
+              echo "::error::[$DOMENA] nakon $korak nije PROŠLO:$nedostaje"; greske=$((greske+1))
+              grep '^REZULTAT|' "/tmp/izlaz/$korak-provjera.txt" || cat "/tmp/izlaz/$korak-provjera.txt"
+            else
+              echo "::notice::[$DOMENA] $korak: PROŠLO $(echo $ocekivano | wc -w) očekivanih provjera"
+            fi
+            if [ "$korak" = K6 ]; then
+              APP_LOZINKA="$APPL" docker compose --profile aplikacija run --rm -T aplikacija-python < /dev/null | tee /tmp/izlaz/K6-demo.txt
+              grep -q '^DEMO|upozorenja|0$' /tmp/izlaz/K6-demo.txt \
+                && echo "::notice::[$DOMENA] demo nakon K6: 0 upozorenja" \
+                || { echo "::error::[$DOMENA] demo nakon K6 ima upozorenja"; greske=$((greske+1)); }
+            fi
+          done < /tmp/vodic/ocekivano.txt
+          ukupno=$(grep -c '^REZULTAT|' /tmp/izlaz/K9-provjera.txt || true)
+          palo=$(grep -c '^REZULTAT|.*|PALO' /tmp/izlaz/K9-provjera.txt || true)
+          echo "::notice::[$DOMENA] završno: $ukupno provjera, PALO: $palo"
+          [ "$palo" -eq 0 ] && [ "$greske" -eq 0 ]
+
+      - name: Demo – završno (0 upozorenja)
+        run: |
+          docker compose --profile aplikacija run --rm -T aplikacija-python | tee /tmp/izlaz/demo-kraj.txt
+          grep -q '^DEMO|upozorenja|0$' /tmp/izlaz/demo-kraj.txt
+
+      - name: Izlazi
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vodic-${{ matrix.domena }}
+          path: /tmp/izlaz/
+          retention-days: 7
+
+      - name: Gašenje
+        if: always()
+        run: docker compose --profile provjera --profile aplikacija down -v

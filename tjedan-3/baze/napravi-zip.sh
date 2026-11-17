@@ -18,8 +18,8 @@ find "$STAGE/aplikacija" \( -name target -o -name bin -o -name obj -o -name .ven
   -o -name .ruff_cache -o -name .idea -o -name .vs \) -type d -prune -exec rm -rf {} +
 
 # Sigurnosna provjera: rješenje i lokalne tajne ne smiju završiti u paketu.
-if find "$STAGE" -path '*rjesenje*' -o -name '.env' | grep -q .; then
-  echo "GREŠKA: paket sadrži rjesenje/ ili .env" >&2
+if find "$STAGE" -path '*rjesenje*' -o -path '*vodic*' -o -name '.env' | grep -q .; then
+  echo "GREŠKA: paket sadrži rjesenje/, vodic/ ili .env" >&2
   exit 1
 fi
 
