@@ -127,7 +127,7 @@ GO
 /* ---------------------------------------------------------------------------------------
    Z4 – DYNAMIC DATA MASKING I ROW-LEVEL SECURITY
    --------------------------------------------------------------------------------------- */
--- Maskiranje: tko nema UNMASK, vidi a***@***.com i *******4051 umjesto stvarnih vrijednosti.
+-- Maskiranje: tko nema UNMASK, vidi aXXX@XXXX.com i *******4051 umjesto stvarnih vrijednosti.
 ALTER TABLE dbo.korisnici ALTER COLUMN email ADD MASKED WITH (FUNCTION = 'email()');
 ALTER TABLE dbo.korisnici ALTER COLUMN oib   ADD MASKED WITH (FUNCTION = 'partial(0,"*******",4)');
 GO
