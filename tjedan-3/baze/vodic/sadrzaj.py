@@ -13,24 +13,24 @@ DOMENE = {
 }
 
 PRAVA = {
-    "medtermin": """GRANT SELECT, INSERT, UPDATE ON dbo.korisnici    TO uloga_aplikacija;  -- prijava, registracija, reset lozinke
+    "medtermin": """GRANT SELECT, INSERT, UPDATE ON dbo.korisnici    TO uloga_aplikacija;  -- prijava, registracija, reset
 GRANT SELECT, INSERT, UPDATE ON dbo.reset_tokeni TO uloga_aplikacija;
 GRANT SELECT, INSERT, UPDATE ON dbo.postavke     TO uloga_aplikacija;
 GRANT SELECT                 ON dbo.lijecnici    TO uloga_aplikacija;
 GRANT SELECT, INSERT, UPDATE ON dbo.termini      TO uloga_aplikacija;  -- uvoz termina, zauzeto
 GRANT SELECT, INSERT, DELETE ON dbo.rezervacije  TO uloga_aplikacija;  -- rezervacija i otkazivanje
 GRANT SELECT                 ON dbo.nalazi       TO uloga_aplikacija;""",
-    "ulaznica": """GRANT SELECT, INSERT, UPDATE ON dbo.korisnici    TO uloga_aplikacija;  -- prijava, registracija, reset lozinke
+    "ulaznica": """GRANT SELECT, INSERT, UPDATE ON dbo.korisnici    TO uloga_aplikacija;  -- prijava, registracija, reset
 GRANT SELECT, INSERT, UPDATE ON dbo.reset_tokeni TO uloga_aplikacija;
 GRANT SELECT, INSERT, UPDATE ON dbo.postavke     TO uloga_aplikacija;
 GRANT SELECT, INSERT, UPDATE ON dbo.dogadjaji    TO uloga_aplikacija;  -- uvoz događaja, prodano
 GRANT SELECT, INSERT, DELETE ON dbo.narudzbe     TO uloga_aplikacija;  -- kupnja i storno
 GRANT SELECT, INSERT         ON dbo.racuni       TO uloga_aplikacija;  -- račun se nikad ne briše""",
-    "kadrovska": """GRANT SELECT, INSERT, UPDATE ON dbo.korisnici         TO uloga_aplikacija;  -- prijava, registracija, reset lozinke
+    "kadrovska": """GRANT SELECT, INSERT, UPDATE ON dbo.korisnici         TO uloga_aplikacija;  -- prijava, registracija, reset
 GRANT SELECT, INSERT, UPDATE ON dbo.reset_tokeni      TO uloga_aplikacija;
 GRANT SELECT, INSERT, UPDATE ON dbo.postavke          TO uloga_aplikacija;
 GRANT SELECT                 ON dbo.zaposlenici       TO uloga_aplikacija;
-GRANT SELECT, INSERT, DELETE ON dbo.zahtjevi          TO uloga_aplikacija;  -- podnošenje i povlačenje zahtjeva
+GRANT SELECT, INSERT, DELETE ON dbo.zahtjevi          TO uloga_aplikacija;  -- podnošenje, povlačenje
 GRANT SELECT                 ON dbo.platne_liste      TO uloga_aplikacija;
 GRANT SELECT, INSERT, UPDATE ON dbo.edukacije         TO uloga_aplikacija;  -- uvoz, broj prijavljenih
 GRANT SELECT, INSERT         ON dbo.prijave_edukacije TO uloga_aplikacija;""",
@@ -291,7 +291,7 @@ DELETE FROM dbo.rezervacije WHERE napomena = N'test K3';""",
             "citanje_glavne = 1, upis_glavne = 1, mijenjanje_sheme = 0, citanje_revizije = 0, create_table = 0.",
             "sys.fn_my_permissions za dbo.revizija ne vraća nijedan redak.",
             "Upit nad pravima uloge public ne vraća nijedan redak.",
-            "Test okidača (MedTermin): aplikacija upiše rezervaciju, a u dbo.revizija se pojavi redak INSERT s prijavom medtermin_app; testni redak se zatim briše.",
+            "Test okidača (MedTermin): aplikacija upiše rezervaciju i u dbo.revizija se pojavi redak INSERT; testni redak se zatim briše. U stupcu prijava piše sa (ili dba_admin), jer ORIGINAL_LOGIN() i pod EXECUTE AS vraća izvornu prijavu – kad upisuje prava aplikacija, piše medtermin_app.",
         ],
         pitanje=("Zašto okidač i dalje može pisati u dbo.revizija iako aplikacija na njoj nema prava (čak ima DENY)?",
                  "Ownership chaining: okidač i tablica dbo.revizija imaju istog vlasnika (dbo). Kad lanac vlasništva nije prekinut, SQL Server ne provjerava prava na objekt koji okidač koristi – ni GRANT ni DENY. Prava se provjeravaju samo na ulazu, na dbo.rezervacije, gdje aplikacija ima INSERT. Zato je okidač ispravno mjesto za dnevnik: aplikacija ga ne može ni čitati ni mijenjati, a zapis ipak nastaje."),
@@ -333,7 +333,8 @@ RECONFIGURE;
 GO""",
         test="""SELECT name, value_in_use
 FROM sys.configurations
-WHERE name IN (N'xp_cmdshell', N'cross db ownership chaining', N'Ad Hoc Distributed Queries', N'clr enabled');
+WHERE name IN (N'xp_cmdshell', N'cross db ownership chaining',
+               N'Ad Hoc Distributed Queries', N'clr enabled');
 
 SELECT name, is_trustworthy_on, SUSER_SNAME(owner_sid) AS vlasnik
 FROM sys.databases WHERE name = N'MedTermin';
@@ -443,9 +444,10 @@ WITH SCHEMABINDING
 AS
 RETURN
     SELECT 1 AS dopusteno
-    WHERE IS_MEMBER(N'uloga_aplikacija') = 0                                -- RLS vrijedi za aplikaciju, ne za DBA-u
-       OR @vlasnik = CAST(SESSION_CONTEXT(N'korisnik') AS NVARCHAR(50))      -- vlastiti zapisi
-       OR EXISTS (SELECT 1 FROM dbo.korisnici AS k                           -- ADMIN aplikacije vidi sve
+    -- 1) RLS vrijedi samo za aplikaciju, ne za DBA-u; 2) vlastiti zapisi; 3) ADMIN aplikacije vidi sve
+    WHERE IS_MEMBER(N'uloga_aplikacija') = 0
+       OR @vlasnik = CAST(SESSION_CONTEXT(N'korisnik') AS NVARCHAR(50))
+       OR EXISTS (SELECT 1 FROM dbo.korisnici AS k
                   WHERE k.username = CAST(SESSION_CONTEXT(N'korisnik') AS NVARCHAR(50))
                     AND k.uloga = 'ADMIN');
 GO
