@@ -8,7 +8,7 @@ ovisi o privatnom repozitoriju: kako brzo doći do „ispravljenog” stanja **b
 |---|---|---|---|
 | Dan 1 | P1 – Sigurnost i zaštita programske potpore i DevSecOps | A (okviri, poglavlja 2–5), B (DevSecOps, poglavlje 6) | P1, svaki slajd |
 | Dan 2 | P2 – Sigurnost baza podataka | C (baza, poglavlja 2–8) | P2, svaki slajd |
-| Dan 3 | radionica: ispitivanje sigurnosti, rizik i usklađenost | pipeline polaznika na njihovim repozitorijima | – |
+| Dan 3 | P3 – Ispitivanje sigurnosti, rizik i usklađenost (radionica) | D (demo repozitorij za svih pet blokova) + pipeline polaznika na njihovim repozitorijima | P3, svaki slajd |
 
 ## A. Mehanizmi okvira (~20 min, P1 poglavlja 2–5)
 
@@ -60,6 +60,20 @@ docker compose --profile aplikacija run --rm aplikacija-python       # Upozorenj
 ```
 
 Na kraju `docker compose down -v` i pražnjenje `backup/` i `audit/` (rješenje je stvorilo certifikate i kopije).
+
+## D. Dan 3 – ispitivanje, rizik i usklađenost (P3, radionica)
+
+Gotov primjer svih pet blokova na MedTerminu (Java): privatni repozitorij
+<https://github.com/aradovanJava/t3-dan3-medtermin-demo>, vodič po blokovima u njegovu `docs/README.md`.
+Izvor i ponovno stvaranje: `tjedan-3/dan3-demo/` (`pripremi-dan3.sh`, zakrpe, README).
+
+- Blok 1: PR #11 (nadogradnja umjesto općih iznimki), Dependabot PR-ovi, PR #13 (S06 → SCA + Semgrep crveni) i
+  PR #14 (S10 → svi alati zeleni, pada samo sigurnosni test).
+- Blok 2: plan ispitivanja, `docs/rucni-testovi.http` na lokalnoj aplikaciji (`./mvnw spring-boot:run`), nalaz
+  N-01 s PR-om #12 (test crven → popravak zelen) i otvoren nalaz N-02.
+- Blokovi 3–5: `docs/dfd.md`, `stride.md`, `registar-rizika.md`, `asvs.md`, `uskladenost.md`.
+- **Ne otvarajte** `src/main/` ni diff PR-a #14 (rješenje T2). Dokumenti u `docs/` su riješen primjer za MedTermin –
+  pokazujte ih na projektoru, ne dijelite ih polaznicima.
 
 ## Provjera prije nastave
 

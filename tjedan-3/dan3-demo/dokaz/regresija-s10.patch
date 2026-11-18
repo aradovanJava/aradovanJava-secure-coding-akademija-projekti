@@ -1,0 +1,59 @@
+From 9ab80406f8a2ee6801f7993fe9a5ffc191be6a22 Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Wed, 18 Nov 2026 20:02:18 +0000
+Subject: [PATCH] =?UTF-8?q?DOKAZ=20(ne=20spajati):=20vra=C4=87en=20propust?=
+ =?UTF-8?q?=20S10=20=E2=80=93=20=E2=80=9Eprovjeri=20pa=20upi=C5=A1i?=
+ =?UTF-8?q?=E2=80=9C=20kod=20zadnjeg=20mjesta?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Nijedan alat (Semgrep, SpotBugs, OSV, ZAP) to ne vidi; vrata pada samo zbog sigurnosnog testa S10ZadnjeMjestoTest.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ .../rezervacije/RezervacijaService.java        | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
+
+diff --git a/src/main/java/hr/span/akademija/medtermin/rezervacije/RezervacijaService.java b/src/main/java/hr/span/akademija/medtermin/rezervacije/RezervacijaService.java
+index 90dd454..1edd22c 100644
+--- a/src/main/java/hr/span/akademija/medtermin/rezervacije/RezervacijaService.java
++++ b/src/main/java/hr/span/akademija/medtermin/rezervacije/RezervacijaService.java
+@@ -5,6 +5,7 @@ import hr.span.akademija.medtermin.platforma.JdbcPomoc;
+ import hr.span.akademija.medtermin.platforma.PrijavljeniKorisnik;
+ import java.time.LocalDateTime;
+ import java.util.List;
++import java.util.Map;
+ import java.util.Optional;
+ import java.util.regex.Pattern;
+ import org.slf4j.Logger;
+@@ -71,18 +72,15 @@ public class RezervacijaService {
+         }
+         log.info("Nova rezervacija: termin {}, korisnik {}, OIB {}", terminId, korisnik.username(),
+                 maskirajOib(zahtjev.oib()));
+-        int azurirano = jdbc.update(
+-                "UPDATE termini SET zauzeto = zauzeto + 1 WHERE id = ? AND zauzeto < kapacitet", terminId);
+-        if (azurirano == 0) {
++        Map<String, Object> termin = jdbc.queryForMap("SELECT kapacitet, zauzeto FROM termini WHERE id = ?", terminId);
++        int kapacitet = ((Number) termin.get("kapacitet")).intValue();
++        int zauzeto = ((Number) termin.get("zauzeto")).intValue();
++        if (zauzeto >= kapacitet) {
+             throw new ApiException(HttpStatus.CONFLICT, "Nema slobodnih mjesta.");
+         }
+-        try {
+-            String oznaka = bis.upisiURaspored(terminId, korisnik.username());
+-            return spremi(zahtjev, korisnik, oznaka);
+-        } catch (RuntimeException e) {
+-            jdbc.update("UPDATE termini SET zauzeto = zauzeto - 1 WHERE id = ?", terminId);
+-            throw e;
+-        }
++        String oznaka = bis.upisiURaspored(terminId, korisnik.username());
++        jdbc.update("UPDATE termini SET zauzeto = zauzeto + 1 WHERE id = ?", terminId);
++        return spremi(zahtjev, korisnik, oznaka);
+     }
+ 
+     @Transactional
+-- 
+2.43.0
+

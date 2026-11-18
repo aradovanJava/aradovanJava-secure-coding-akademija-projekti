@@ -1,0 +1,239 @@
+From 333dd70abe147aba864b58eeffc062a2b76deda0 Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Wed, 18 Nov 2026 20:03:33 +0000
+Subject: [PATCH 7/9] =?UTF-8?q?N-01:=20token=20prijave=20istje=C4=8De,=20o?=
+ =?UTF-8?q?djava=20i=20opoziv=20nakon=20promjene=20lozinke?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- TokenStore: istek nakon 30 min neaktivnosti (app.sesija.neaktivnost) i najkasnije 8 h (app.sesija.najdulje);
+  istekli tokeni se brišu
+- POST /api/auth/odjava opoziva token i briše kolačić SESSION
+- uspješan reset lozinke opoziva sve tokene korisnika
+
+N01SesijaTest sada prolazi. ASVS v5.0.0-7.4.1, 7.3.1, 7.3.2, 7.4.3.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ http/medtermin.http                           |  4 ++
+ .../medtermin/platforma/AuthController.java   | 19 +++++++
+ .../medtermin/platforma/AuthFilter.java       |  2 +
+ .../platforma/ResetLozinkeService.java        |  9 ++-
+ .../medtermin/platforma/TokenStore.java       | 56 +++++++++++++++++--
+ src/main/resources/application.properties     |  4 ++
+ 6 files changed, 88 insertions(+), 6 deletions(-)
+
+diff --git a/http/medtermin.http b/http/medtermin.http
+index 9c27b34..8cf5934 100644
+--- a/http/medtermin.http
++++ b/http/medtermin.http
+@@ -22,6 +22,10 @@ Content-Type: application/json
+ GET {{host}}/api/ja
+ Authorization: Bearer {{token}}
+ 
++### Odjava (token odmah prestaje vrijediti)
++POST {{host}}/api/auth/odjava
++Authorization: Bearer {{token}}
++
+ ### Registracija novog korisnika
+ POST {{host}}/api/auth/register
+ Content-Type: application/json
+diff --git a/src/main/java/hr/span/akademija/medtermin/platforma/AuthController.java b/src/main/java/hr/span/akademija/medtermin/platforma/AuthController.java
+index d1a370b..9f6ec7b 100644
+--- a/src/main/java/hr/span/akademija/medtermin/platforma/AuthController.java
++++ b/src/main/java/hr/span/akademija/medtermin/platforma/AuthController.java
+@@ -3,10 +3,15 @@ package hr.span.akademija.medtermin.platforma;
+ import hr.span.akademija.medtermin.platforma.KorisnikService.Korisnik;
+ import hr.span.akademija.medtermin.platforma.KorisnikService.PrijavaZahtjev;
+ import hr.span.akademija.medtermin.platforma.KorisnikService.RegistracijaZahtjev;
++import jakarta.servlet.http.HttpServletRequest;
+ import java.util.LinkedHashMap;
+ import java.util.Map;
+ import java.util.Optional;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.http.HttpHeaders;
+ import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseCookie;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.GetMapping;
+ import org.springframework.web.bind.annotation.PostMapping;
+@@ -18,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
+ @RequestMapping("/api")
+ public class AuthController {
+ 
++    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
++
+     private final KorisnikService korisnici;
+     private final TokenStore tokeni;
+     private final ResetLozinkeService reset;
+@@ -50,6 +57,18 @@ public class AuthController {
+         return ResponseEntity.ok(Map.of("token", token, "username", k.username(), "uloga", k.uloga()));
+     }
+ 
++    /** N-01: odjava opoziva token (zaglavlje ili kolačić) i briše kolačić SESSION. */
++    @PostMapping("/auth/odjava")
++    public ResponseEntity<Void> odjava(PrijavljeniKorisnik korisnik, HttpServletRequest request) {
++        if (request.getAttribute(AuthFilter.ATRIBUT_TOKEN) instanceof String token) {
++            tokeni.opozovi(token);
++        }
++        log.info("Odjava korisnika {}", korisnik.username());
++        ResponseCookie obrisi = ResponseCookie.from(AuthFilter.KOLACIC, "")
++                .httpOnly(true).sameSite("Lax").path("/").maxAge(0).build();
++        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, obrisi.toString()).build();
++    }
++
+     @PostMapping("/auth/register")
+     public ResponseEntity<Map<String, Object>> register(@RequestBody RegistracijaZahtjev zahtjev) {
+         Korisnik k = korisnici.registriraj(zahtjev);
+diff --git a/src/main/java/hr/span/akademija/medtermin/platforma/AuthFilter.java b/src/main/java/hr/span/akademija/medtermin/platforma/AuthFilter.java
+index d81c9bc..4e3edc4 100644
+--- a/src/main/java/hr/span/akademija/medtermin/platforma/AuthFilter.java
++++ b/src/main/java/hr/span/akademija/medtermin/platforma/AuthFilter.java
+@@ -22,6 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
+ public class AuthFilter extends OncePerRequestFilter {
+ 
+     public static final String ATRIBUT = AuthFilter.class.getName() + ".korisnik";
++    public static final String ATRIBUT_TOKEN = AuthFilter.class.getName() + ".token";
+     public static final String KOLACIC = "SESSION";
+ 
+     private final TokenStore tokeni;
+@@ -40,6 +41,7 @@ public class AuthFilter extends OncePerRequestFilter {
+         PrijavljeniKorisnik korisnik = tokeni.korisnik(token);
+         if (korisnik != null) {
+             request.setAttribute(ATRIBUT, korisnik);
++            request.setAttribute(ATRIBUT_TOKEN, token);
+         }
+         chain.doFilter(request, response);
+     }
+diff --git a/src/main/java/hr/span/akademija/medtermin/platforma/ResetLozinkeService.java b/src/main/java/hr/span/akademija/medtermin/platforma/ResetLozinkeService.java
+index e9f5cfb..d9dcbaa 100644
+--- a/src/main/java/hr/span/akademija/medtermin/platforma/ResetLozinkeService.java
++++ b/src/main/java/hr/span/akademija/medtermin/platforma/ResetLozinkeService.java
+@@ -24,11 +24,14 @@ public class ResetLozinkeService {
+     private final JdbcTemplate jdbc;
+     private final KorisnikService korisnici;
+     private final PostaService posta;
++    private final TokenStore tokeni;
+ 
+-    public ResetLozinkeService(JdbcTemplate jdbc, KorisnikService korisnici, PostaService posta) {
++    public ResetLozinkeService(JdbcTemplate jdbc, KorisnikService korisnici, PostaService posta,
++                               TokenStore tokeni) {
+         this.jdbc = jdbc;
+         this.korisnici = korisnici;
+         this.posta = posta;
++        this.tokeni = tokeni;
+     }
+ 
+     public void zatrazi(String username) {
+@@ -62,7 +65,9 @@ public class ResetLozinkeService {
+         if (iskoristeno != 1) {
+             return false;
+         }
+-        korisnici.promijeniLozinku((String) zapis.get("username"), novaLozinka);
++        String username = (String) zapis.get("username");
++        korisnici.promijeniLozinku(username, novaLozinka);
++        tokeni.opozoviSve(username);   // N-01: stari tokeni (možda ukradeni) više ne vrijede
+         return true;
+     }
+ 
+diff --git a/src/main/java/hr/span/akademija/medtermin/platforma/TokenStore.java b/src/main/java/hr/span/akademija/medtermin/platforma/TokenStore.java
+index 9986a11..c07a760 100644
+--- a/src/main/java/hr/span/akademija/medtermin/platforma/TokenStore.java
++++ b/src/main/java/hr/span/akademija/medtermin/platforma/TokenStore.java
+@@ -1,26 +1,74 @@
+ package hr.span.akademija.medtermin.platforma;
+ 
+ import java.security.SecureRandom;
++import java.time.Duration;
++import java.time.Instant;
+ import java.util.Base64;
+ import java.util.concurrent.ConcurrentHashMap;
++import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.stereotype.Component;
+ 
+-/** Tokeni prijave čuvaju se u memoriji (token → korisnik). */
++/**
++ * Tokeni prijave čuvaju se u memoriji (token → sesija).
++ *
++ * N-01: token istječe nakon neaktivnosti ({@code app.sesija.neaktivnost}) i najkasnije nakon najduljeg
++ * trajanja ({@code app.sesija.najdulje}); odjava ga opoziva, a promjena lozinke opoziva sve tokene korisnika.
++ */
+ @Component
+ public class TokenStore {
+ 
++    private record Sesija(PrijavljeniKorisnik korisnik, Instant izdana, Instant zadnjaUporaba) {
++
++        Sesija uporabljena(Instant sada) {
++            return new Sesija(korisnik, izdana, sada);
++        }
++    }
++
+     private final SecureRandom random = new SecureRandom();
+-    private final ConcurrentHashMap<String, PrijavljeniKorisnik> tokeni = new ConcurrentHashMap<>();
++    private final ConcurrentHashMap<String, Sesija> sesije = new ConcurrentHashMap<>();
++    private final Duration neaktivnost;
++    private final Duration najdulje;
++
++    public TokenStore(@Value("${app.sesija.neaktivnost:PT30M}") String neaktivnost,
++                      @Value("${app.sesija.najdulje:PT8H}") String najdulje) {
++        this.neaktivnost = Duration.parse(neaktivnost);
++        this.najdulje = Duration.parse(najdulje);
++    }
+ 
+     public String izdaj(PrijavljeniKorisnik korisnik) {
++        Instant sada = Instant.now();
++        sesije.entrySet().removeIf(e -> istekla(e.getValue(), sada));   // čišćenje isteklih
+         byte[] bajtovi = new byte[32];
+         random.nextBytes(bajtovi);
+         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bajtovi);
+-        tokeni.put(token, korisnik);
++        sesije.put(token, new Sesija(korisnik, sada, sada));
+         return token;
+     }
+ 
++    /** Korisnik za valjan token, inače {@code null}; istekli token se briše. Upotreba produljuje neaktivnost. */
+     public PrijavljeniKorisnik korisnik(String token) {
+-        return token == null ? null : tokeni.get(token);
++        if (token == null) {
++            return null;
++        }
++        Instant sada = Instant.now();
++        Sesija sesija = sesije.computeIfPresent(token, (t, s) -> istekla(s, sada) ? null : s.uporabljena(sada));
++        return sesija == null ? null : sesija.korisnik();
++    }
++
++    /** Odjava: token odmah prestaje vrijediti. */
++    public void opozovi(String token) {
++        if (token != null) {
++            sesije.remove(token);
++        }
++    }
++
++    /** Promjena lozinke: prestaju vrijediti svi tokeni korisnika. */
++    public void opozoviSve(String username) {
++        sesije.values().removeIf(s -> s.korisnik().username().equals(username));
++    }
++
++    private boolean istekla(Sesija sesija, Instant sada) {
++        return sesija.zadnjaUporaba().plus(neaktivnost).isBefore(sada)
++                || sesija.izdana().plus(najdulje).isBefore(sada);
+     }
+ }
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+index feb766e..13ff81a 100644
+--- a/src/main/resources/application.properties
++++ b/src/main/resources/application.properties
+@@ -15,3 +15,7 @@ app.naziv=MedTermin
+ app.storage-dir=./data/dokumenti
+ app.mailbox-dir=./data/posta
+ app.cors.allowed-origins=http://localhost:5173
++
++# Sesija (N-01): token istječe nakon neaktivnosti i najkasnije nakon najduljeg trajanja (ISO-8601)
++app.sesija.neaktivnost=PT30M
++app.sesija.najdulje=PT8H
+-- 
+2.43.0
+

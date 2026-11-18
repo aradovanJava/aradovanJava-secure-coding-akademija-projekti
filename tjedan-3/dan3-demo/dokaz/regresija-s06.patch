@@ -1,0 +1,55 @@
+From 146fd583717c93bc3d79b9b46723843caf12273e Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Wed, 18 Nov 2026 20:02:15 +0000
+Subject: [PATCH] =?UTF-8?q?DOKAZ=20(ne=20spajati):=20vra=C4=87en=20propust?=
+ =?UTF-8?q?=20S06=20=E2=80=93=20snakeyaml=201.33=20i=20new=20Yaml().load?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Vrata moraju pasti: SCA (OSV) javlja CVE-2022-1471 u snakeyaml 1.33.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ pom.xml                                                       | 1 +
+ .../akademija/medtermin/platforma/PostavkeController.java     | 4 +---
+ 2 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index e2ded23..41293b2 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -19,6 +19,7 @@
+ 
+     <properties>
+         <java.version>21</java.version>
++        <snakeyaml.version>1.33</snakeyaml.version>
+         <!-- Tomcat 10.1 je i dalje podržan: zakrpa iznad verzije iz Spring Boota 3.5.16 (zadnje OSS izdanje 3.5).
+              Ukloniti kad prijeđemo na Spring Boot 4.x (registar rizika R-02). -->
+         <tomcat.version>10.1.61</tomcat.version>
+diff --git a/src/main/java/hr/span/akademija/medtermin/platforma/PostavkeController.java b/src/main/java/hr/span/akademija/medtermin/platforma/PostavkeController.java
+index 9264566..0e3020d 100644
+--- a/src/main/java/hr/span/akademija/medtermin/platforma/PostavkeController.java
++++ b/src/main/java/hr/span/akademija/medtermin/platforma/PostavkeController.java
+@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.PostMapping;
+ import org.springframework.web.bind.annotation.RequestBody;
+ import org.springframework.web.bind.annotation.RequestMapping;
+ import org.springframework.web.bind.annotation.RestController;
+-import org.yaml.snakeyaml.LoaderOptions;
+-import org.yaml.snakeyaml.constructor.SafeConstructor;
+ import org.yaml.snakeyaml.Yaml;
+ import org.yaml.snakeyaml.error.YAMLException;
+ 
+@@ -49,7 +47,7 @@ public class PostavkeController {
+     public Map<String, Object> spremi(@RequestBody byte[] tijelo, PrijavljeniKorisnik korisnik) {
+         Object dokument;
+         try {
+-            dokument = new Yaml(new SafeConstructor(new LoaderOptions())).load(new ByteArrayInputStream(tijelo));
++            dokument = new Yaml().load(new ByteArrayInputStream(tijelo));
+         } catch (YAMLException e) {
+             throw ApiException.neispravno("Neispravan YAML.");
+         }
+-- 
+2.43.0
+

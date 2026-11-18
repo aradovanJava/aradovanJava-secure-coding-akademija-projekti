@@ -1,0 +1,50 @@
+From c63da9fc9dc4ab1070ae32a1ad10d356eadb65dd Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Wed, 18 Nov 2026 19:45:19 +0000
+Subject: [PATCH 1/9] =?UTF-8?q?Ovisnosti:=20Spring=20Boot=203.5.7=20?=
+ =?UTF-8?q?=E2=86=92=203.5.16=20(zadnje=20OSS=20izdanje=203.5);=20bez=20op?=
+ =?UTF-8?q?=C4=87ih=20iznimki=20za=20platformu?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Opće iznimke 'osv | * | org.apache.tomcat.embed:* …' skrivale su i nove ranjivosti.
+Nadogradnja unutar 3.5 uklanja većinu nalaza; ostatak se rješava pojedinačno (osv-scanner.toml s rokom).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ ci/prihvaceno.txt | 6 ------
+ pom.xml           | 2 +-
+ 2 files changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/ci/prihvaceno.txt b/ci/prihvaceno.txt
+index 7dae2be..e13e545 100644
+--- a/ci/prihvaceno.txt
++++ b/ci/prihvaceno.txt
+@@ -25,9 +25,3 @@ spotbugs | SQL_INJECTION_SPRING_JDBC | LijecnikController.java | STUPCI.get(sort
+ # S05: zabrana DOCTYPE je u metodi tvornica(); Find Security Bugs ne prati poziv druge metode pa javlja XXE i u popravljenom kodu.
+ # Iznimka bez odsječka vrijedi i za ranjivi kod – zato regresiju čuva vlastito Semgrep pravilo java-xxe-documentbuilderfactory-bez-zabrane-doctype.
+ spotbugs | XXE_DOCUMENT | UvozTermina.java | | tvornica() postavlja disallow-doctype-decl; regresiju hvata ci/semgrep/regresije.yml
+-# Platforma T2 (Spring Boot 3.5.7, listopad 2025): ranjivosti objavljene nakon izdanja u tranzitivnim ovisnostima.
+-# Pravo rješenje je nadogradnja Spring Boota (Dependabot PR) – izvan opsega ovog testa koji ne mijenja T2 predložak.
+-osv | * | org.apache.tomcat.embed:* | | platforma Spring Boot 3.5.7 – rješava nadogradnja Spring Boota (Dependabot)
+-osv | * | com.fasterxml.jackson.core:* | | platforma Spring Boot 3.5.7 – rješava nadogradnja Spring Boota (Dependabot)
+-osv | * | org.springframework:* | | platforma Spring Boot 3.5.7 – rješava nadogradnja Spring Boota (Dependabot)
+-osv | * | org.springframework.boot:* | | platforma Spring Boot 3.5.7 – rješava nadogradnja Spring Boota (Dependabot)
+diff --git a/pom.xml b/pom.xml
+index af4c189..4082aaf 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -7,7 +7,7 @@
+     <parent>
+         <groupId>org.springframework.boot</groupId>
+         <artifactId>spring-boot-starter-parent</artifactId>
+-        <version>3.5.7</version>
++        <version>3.5.16</version>
+         <relativePath/>
+     </parent>
+ 
+-- 
+2.43.0
+

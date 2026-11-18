@@ -1,0 +1,148 @@
+From 489421b08865c364e886d4ae40acf968dd29148a Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Wed, 18 Nov 2026 20:01:24 +0000
+Subject: [PATCH 5/9] =?UTF-8?q?Sigurnosni=20testovi=20i=20za=20S02,=20S03,?=
+ =?UTF-8?q?=20S04=20=E2=80=93=20dokaz=20za=20ASVS=205.3.2,=201.2.2=20i=203?=
+ =?UTF-8?q?.4.2?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Funkcionalni testovi provjeravaju samo dopušteno ponašanje (vlastita datoteka, lokalni returnUrl, dopušteni
+origin); sigurnosni test provjerava i odbijanje.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ .../sigurnost/S02PathTraversalTest.java       | 37 +++++++++++++++++++
+ .../sigurnost/S03OpenRedirectTest.java        | 29 +++++++++++++++
+ .../medtermin/sigurnost/S04CorsTest.java      | 37 +++++++++++++++++++
+ 3 files changed, 103 insertions(+)
+ create mode 100644 src/test/java/hr/span/akademija/medtermin/sigurnost/S02PathTraversalTest.java
+ create mode 100644 src/test/java/hr/span/akademija/medtermin/sigurnost/S03OpenRedirectTest.java
+ create mode 100644 src/test/java/hr/span/akademija/medtermin/sigurnost/S04CorsTest.java
+
+diff --git a/src/test/java/hr/span/akademija/medtermin/sigurnost/S02PathTraversalTest.java b/src/test/java/hr/span/akademija/medtermin/sigurnost/S02PathTraversalTest.java
+new file mode 100644
+index 0000000..ae61125
+--- /dev/null
++++ b/src/test/java/hr/span/akademija/medtermin/sigurnost/S02PathTraversalTest.java
+@@ -0,0 +1,37 @@
++package hr.span.akademija.medtermin.sigurnost;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.UUID;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Tag;
++import org.junit.jupiter.api.Test;
++
++/**
++ * S02 – path traversal kod preuzimanja datoteke (CWE-22). Kanarinac izvan mape s dokumentima ne smije se moći
++ * pročitati, ni kad mu ime sadrži korisničko ime.
++ * WSTG-ATHZ-01 · ASVS v5.0.0-5.3.2 (L1).
++ */
++@Tag("sigurnost")
++@DisplayName("S02 · Preuzimanje datoteke izvan mape s dokumentima")
++class S02PathTraversalTest extends SigurnosniTestBaza {
++
++    @Test
++    @DisplayName("../tajna-ana-… ne vraća sadržaj kanarinca")
++    void kanarinacIzvanMapeNijeDostupan() throws IOException {
++        String sadrzaj = "KANARINAC-" + UUID.randomUUID();
++        String ime = "tajna-ana-" + UUID.randomUUID() + ".txt";
++        Path kanarinac = mapaDokumenata().toAbsolutePath().getParent().resolve(ime);
++        Files.writeString(kanarinac, sadrzaj, StandardCharsets.UTF_8);
++        String ana = prijava("ana", "Ana12345!");
++
++        Odgovor odgovor = get("/api/nalazi/preuzmi?datoteka=" + enc("../" + ime), ana);
++
++        assertThat(odgovor.status()).isNotEqualTo(200);
++        assertThat(odgovor.tijelo()).doesNotContain(sadrzaj);
++    }
++}
+diff --git a/src/test/java/hr/span/akademija/medtermin/sigurnost/S03OpenRedirectTest.java b/src/test/java/hr/span/akademija/medtermin/sigurnost/S03OpenRedirectTest.java
+new file mode 100644
+index 0000000..a5a0e88
+--- /dev/null
++++ b/src/test/java/hr/span/akademija/medtermin/sigurnost/S03OpenRedirectTest.java
+@@ -0,0 +1,29 @@
++package hr.span.akademija.medtermin.sigurnost;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++import java.util.Map;
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Tag;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.ValueSource;
++
++/**
++ * S03 – open redirect nakon prijave (CWE-601). Dopušten je samo lokalni put.
++ * ASVS v5.0.0-1.2.2 (L1).
++ */
++@Tag("sigurnost")
++@DisplayName("S03 · Preusmjeravanje nakon prijave")
++class S03OpenRedirectTest extends SigurnosniTestBaza {
++
++    @ParameterizedTest(name = "returnUrl={0}")
++    @ValueSource(strings = {"https://zlo.example/x", "//zlo.example", "/\\zlo.example"})
++    @DisplayName("vanjska adresa u returnUrl ne preusmjerava izvan aplikacije")
++    void nemaPreusmjerenjaVan(String returnUrl) {
++        Odgovor odgovor = postForma("/prijava",
++                Map.of("username", "ana", "password", "Ana12345!", "returnUrl", returnUrl));
++
++        assertThat(odgovor.status()).isEqualTo(302);
++        assertThat(odgovor.zaglavlje("Location")).doesNotContain("zlo.example");
++    }
++}
+diff --git a/src/test/java/hr/span/akademija/medtermin/sigurnost/S04CorsTest.java b/src/test/java/hr/span/akademija/medtermin/sigurnost/S04CorsTest.java
+new file mode 100644
+index 0000000..0802d39
+--- /dev/null
++++ b/src/test/java/hr/span/akademija/medtermin/sigurnost/S04CorsTest.java
+@@ -0,0 +1,37 @@
++package hr.span.akademija.medtermin.sigurnost;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++import org.junit.jupiter.api.DisplayName;
++import org.junit.jupiter.api.Tag;
++import org.junit.jupiter.api.Test;
++
++/**
++ * S04 – CORS reflektira bilo koji Origin uz credentials (CWE-942). Dopušteni su samo origini iz konfiguracije.
++ * WSTG-CLNT-07 · ASVS v5.0.0-3.4.2 (L1).
++ */
++@Tag("sigurnost")
++@DisplayName("S04 · CORS za nepoznati origin")
++class S04CorsTest extends SigurnosniTestBaza {
++
++    private static final String ZLO = "https://zlo.example";
++
++    @Test
++    @DisplayName("GET s Origin: https://zlo.example ne dobiva Access-Control-Allow-Origin")
++    void zahtjevSNepoznatogOrigina() {
++        String ana = prijava("ana", "Ana12345!");
++
++        Odgovor odgovor = posalji("GET", "/api/ja", ana, null, null, "Origin", ZLO);
++
++        assertThat(odgovor.zaglavlje("Access-Control-Allow-Origin")).isNotIn(ZLO, "*");
++    }
++
++    @Test
++    @DisplayName("preflight s nepoznatog origina nije dopušten")
++    void preflightSNepoznatogOrigina() {
++        Odgovor odgovor = posalji("OPTIONS", "/api/ja", null, null, null,
++                "Origin", ZLO, "Access-Control-Request-Method", "GET");
++
++        assertThat(odgovor.zaglavlje("Access-Control-Allow-Origin")).isNotIn(ZLO, "*");
++    }
++}
+-- 
+2.43.0
+

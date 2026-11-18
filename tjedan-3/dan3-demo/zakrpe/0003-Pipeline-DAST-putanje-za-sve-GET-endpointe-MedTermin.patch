@@ -1,0 +1,43 @@
+From 649f84d8dc3aeb49bb8a0c914c067c396c3a4324 Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Wed, 18 Nov 2026 19:56:19 +0000
+Subject: [PATCH 3/9] Pipeline: DAST putanje za sve GET endpointe MedTermina
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Bez prijave ZAP vidi samo /, /prijava i /api/health; s tokenom testnog korisnika (ana) posjećuje i ove putanje.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ ci/dast-putanje.txt | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/ci/dast-putanje.txt b/ci/dast-putanje.txt
+index 63b6b09..9fa8899 100644
+--- a/ci/dast-putanje.txt
++++ b/ci/dast-putanje.txt
+@@ -1,12 +1,15 @@
+ # Putanje koje ZAP posjećuje s tokenom testnog korisnika (API nema poveznica koje bi spider pratio).
+-# Jedna putanja po retku; dodajte putanje svoje domene (samo GET, bez brisanja podataka!).
++# Jedna putanja po retku; samo GET, bez brisanja podataka!
+ /api/health
+ /api/ja
+ /prijava?returnUrl=/
+-# MedTermin (prilagodite domeni):
++# MedTermin: svi GET endpointi koje vidi prijavljeni pacijent
+ /api/lijecnici?sort=prezime&smjer=asc
++/api/termini
++/api/termini?lijecnikId=1
+ /api/rezervacije/moje
+ /api/nalazi/moji
++/api/nalazi/1?format=json
++/api/nalazi/1?format=pdf
++/api/postavke
+ /ispis/rezervacije/1
+-# Ulaznica:   /api/dogadjaji   /api/narudzbe/moje   /api/racuni/moji   /ispis/narudzbe/1
+-# Kadrovska:  /api/zaposlenici /api/zahtjevi/moji   /api/platne-liste/moje /ispis/zahtjevi/1
+-- 
+2.43.0
+
