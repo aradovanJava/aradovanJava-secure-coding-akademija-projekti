@@ -1,0 +1,44 @@
+From a96eb8b39ec2b840a707cd56996d84086ca03893 Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Thu, 19 Nov 2026 17:04:18 +0000
+Subject: [PATCH] =?UTF-8?q?DOKAZ=20=E2=80=93=20ne=20spajati:=20vra=C4=87en?=
+ =?UTF-8?q?=20S06=20(PyYAML=205.3.1,=20yaml.load=20s=20FullLoaderom)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Očekivano: SCA (pip-audit, OSV-Scanner) nalazi CVE-2020-14343, SAST (Bandit B506, Semgrep) nalazi nesigurno učitavanje YAML-a; Sigurnosna vrata ne prolaze.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ medtermin/platforma/postavke_api.py | 2 +-
+ requirements.txt                    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/medtermin/platforma/postavke_api.py b/medtermin/platforma/postavke_api.py
+index 7fff3fa..44a0310 100644
+--- a/medtermin/platforma/postavke_api.py
++++ b/medtermin/platforma/postavke_api.py
+@@ -34,7 +34,7 @@ def dohvati(korisnik: Prijavljeni, ctx: Ctx) -> dict[str, Any]:
+ @router.post("")
+ def spremi(tijelo: SirovoTijelo, korisnik: Prijavljeni, ctx: Ctx) -> dict[str, Any]:
+     try:
+-        dokument = yaml.safe_load(tijelo)
++        dokument = yaml.load(tijelo, Loader=yaml.FullLoader)
+     except yaml.YAMLError as e:
+         raise ApiGreska.neispravno("Neispravan YAML.") from e
+     if not isinstance(dokument, dict):
+diff --git a/requirements.txt b/requirements.txt
+index afc4ae2..6bcb5e2 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -5,4 +5,4 @@ uvicorn==0.54.0
+ python-multipart==0.0.33
+ lxml==6.1.3
+ argon2-cffi==25.1.0
+-PyYAML==6.0.3
++PyYAML==5.3.1
+-- 
+2.43.0
+

@@ -75,6 +75,17 @@ Izvor i ponovno stvaranje: `tjedan-3/dan3-demo/` (`pripremi-dan3.sh`, zakrpe, RE
 - **Ne otvarajte** `src/main/` ni diff PR-a #14 (rješenje T2). Dokumenti u `docs/` su riješen primjer za MedTermin –
   pokazujte ih na projektoru, ne dijelite ih polaznicima.
 
+**Python verzija** (za grupe s T2 u Pythonu): <https://github.com/aradovanJava/t3-dan3-medtermin-demo-python>,
+izvor i ponovno stvaranje u `tjedan-3/dan3-demo-python/`. Isti blokovi i dokumenti, uz razlike:
+
+- Blok 1: prvo pokretanje zeleno bez ijedne iznimke; lekcija o ovisnostima je R-02 (`requirements.txt` pribija samo
+  izravne ovisnosti, tranzitivne bez hasha); 9 Dependabot PR-ova, svi prolaze; PR #11 (S06 → Semgrep + OSV-Scanner +
+  pip-audit, Bandit samo informativno) i PR #12 (S10 → pada samo sigurnosni test).
+- Blok 2: `python -m medtermin` (port 8000), `pytest -m sigurnost`; N-01 u PR-u #10 (test crven → popravak zelen).
+- Blokovi 3–5: STRIDE ima 30 prijetnji (dodatno Swagger UI bez prijave i tranzitivne ovisnosti), ASVS 33 ✅ · 12 ⚠️ ·
+  7 ❌ · 18 ➖ (Argon2 umjesto bcrypta: 6.2.8 ✅).
+- **Ne otvarajte** `medtermin/` ni diff PR-a #12.
+
 ## Provjera prije nastave
 
 CI u ovom repozitoriju provjerava sve demonstracije: `t3-okviri` (skripta `demo_okviri.py` nad Javom, .NET-om i

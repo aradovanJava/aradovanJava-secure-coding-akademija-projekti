@@ -1,0 +1,413 @@
+From 648030833f47c6759d8d82a8cc1bb51c5895f793 Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Thu, 19 Nov 2026 17:00:41 +0000
+Subject: [PATCH 2/2] =?UTF-8?q?Sigurnosni=20testovi=20za=20propuste=20koje?=
+ =?UTF-8?q?=20alati=20iz=20pipelinea=20ne=20vide=20(S01=E2=80=93S04,=20S09?=
+ =?UTF-8?q?,=20S10,=20S12,=20S13)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- S01 brisanje tuđe rezervacije (WSTG-ATHZ-04, ASVS 8.2.2)
+- S02 path traversal, S03 open redirect, S04 CORS – dokaz da se loš ulaz odbija (ASVS 5.3.2, 1.2.2, 3.4.2)
+- S09 pohranjeni XSS na potvrdi za ispis (WSTG-INPV-02, ASVS 1.2.1)
+- S10 10 istodobnih zahtjeva za zadnje mjesto: stvarni uvicorn poslužitelj i barijera (ASVS 2.3.4)
+- S12 log bez lozinke i punog OIB-a, WARNING za neuspjelu prijavu (ASVS 16.2.5, 16.3.1)
+- S13 nepoznat format na tuđem nalazu (WSTG-ERRH-01, ASVS 16.5.3)
+Oznaka pytest: pytest -m sigurnost
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ pyproject.toml                               |  1 +
+ tests/sigurnost/__init__.py                  |  0
+ tests/sigurnost/conftest.py                  | 79 ++++++++++++++++++++
+ tests/sigurnost/test_s01_tuda_rezervacija.py | 33 ++++++++
+ tests/sigurnost/test_s02_path_traversal.py   | 20 +++++
+ tests/sigurnost/test_s03_open_redirect.py    | 16 ++++
+ tests/sigurnost/test_s04_cors.py             | 21 ++++++
+ tests/sigurnost/test_s09_ispis_xss.py        | 25 +++++++
+ tests/sigurnost/test_s10_zadnje_mjesto.py    | 60 +++++++++++++++
+ tests/sigurnost/test_s12_logiranje.py        | 26 +++++++
+ tests/sigurnost/test_s13_fail_open.py        | 17 +++++
+ 11 files changed, 298 insertions(+)
+ create mode 100644 tests/sigurnost/__init__.py
+ create mode 100644 tests/sigurnost/conftest.py
+ create mode 100644 tests/sigurnost/test_s01_tuda_rezervacija.py
+ create mode 100644 tests/sigurnost/test_s02_path_traversal.py
+ create mode 100644 tests/sigurnost/test_s03_open_redirect.py
+ create mode 100644 tests/sigurnost/test_s04_cors.py
+ create mode 100644 tests/sigurnost/test_s09_ispis_xss.py
+ create mode 100644 tests/sigurnost/test_s10_zadnje_mjesto.py
+ create mode 100644 tests/sigurnost/test_s12_logiranje.py
+ create mode 100644 tests/sigurnost/test_s13_fail_open.py
+
+diff --git a/pyproject.toml b/pyproject.toml
+index dd9128f..ea99bfa 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -12,6 +12,7 @@ addopts = "-ra"
+ markers = [
+   "funkcionalno: funkcionalni testovi aplikacije",
+   "primjer: primjer testa (predložak za vlastite testove)",
++  "sigurnost: sigurnosni testovi (propusti koje alati iz pipelinea ne vide)",
+ ]
+ 
+ [tool.coverage.run]
+diff --git a/tests/sigurnost/__init__.py b/tests/sigurnost/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tests/sigurnost/conftest.py b/tests/sigurnost/conftest.py
+new file mode 100644
+index 0000000..4d5a62d
+--- /dev/null
++++ b/tests/sigurnost/conftest.py
+@@ -0,0 +1,79 @@
++"""Pomoćne funkcije i fixture za sigurnosne testove.
++
++* ``novi_termin(kapacitet)`` – svaki test stvara vlastiti termin (uvoz XML-a kao dr.horvat),
++  pa ne ovisi o seed podacima,
++* ``posluzitelj`` – **stvarni** uvicorn poslužitelj na slobodnom portu. ``TestClient`` šalje zahtjeve jedan po jedan
++  kroz istu petlju događaja, a utrka (S10) nastaje tek kad zahtjevi stvarno idu paralelno.
++"""
++
++from __future__ import annotations
++
++import socket
++import threading
++import time
++from collections.abc import Callable, Iterator
++from dataclasses import dataclass
++
++import httpx2 as httpx
++import pytest
++import uvicorn
++from fastapi import FastAPI
++from fastapi.testclient import TestClient
++
++from medtermin.app import create_app
++from medtermin.postavke import Postavke
++
++OIB = "48291736504"
++
++
++def uvezi_termin(klijent: TestClient | httpx.Client, zaglavlja: dict[str, str], kapacitet: int) -> int:
++    xml = (
++        "<termini><termin><lijecnikId>1</lijecnikId><pocetak>2027-03-01T08:00</pocetak>"
++        f"<kapacitet>{kapacitet}</kapacitet><napomena>Termin za sigurnosni test</napomena></termin></termini>"
++    )
++    odgovor = klijent.post("/api/termini/uvoz", content=xml, headers={**zaglavlja, "Content-Type": "application/xml"})
++    assert odgovor.status_code == 200, odgovor.text
++    return odgovor.json()["termini"][0]["id"]
++
++
++@pytest.fixture
++def novi_termin(client: TestClient, prijava) -> Callable[[int], int]:
++    return lambda kapacitet: uvezi_termin(client, prijava("dr.horvat"), kapacitet)
++
++
++def rezerviraj(klijent: TestClient | httpx.Client, zaglavlja: dict[str, str], termin_id: int, napomena: str):
++    return klijent.post(
++        "/api/rezervacije", json={"terminId": termin_id, "napomena": napomena, "oib": OIB}, headers=zaglavlja
++    )
++
++
++@dataclass
++class Posluzitelj:
++    url: str
++    app: FastAPI
++
++
++def _slobodan_port() -> int:
++    with socket.socket() as s:
++        s.bind(("127.0.0.1", 0))
++        return s.getsockname()[1]
++
++
++@pytest.fixture
++def posluzitelj(mape) -> Iterator[Posluzitelj]:
++    aplikacija = create_app(Postavke(storage_dir=str(mape.dokumenti), mailbox_dir=str(mape.posta)))
++    port = _slobodan_port()
++    server = uvicorn.Server(uvicorn.Config(aplikacija, host="127.0.0.1", port=port, log_level="warning"))
++    dretva = threading.Thread(target=server.run, daemon=True)
++    dretva.start()
++    rok = time.monotonic() + 15
++    while not server.started:
++        if time.monotonic() > rok:
++            raise RuntimeError("uvicorn se nije pokrenuo na vrijeme")
++        time.sleep(0.05)
++    try:
++        yield Posluzitelj(url=f"http://127.0.0.1:{port}", app=aplikacija)
++    finally:
++        server.should_exit = True
++        dretva.join(timeout=10)
++        aplikacija.state.baza.zatvori()
+diff --git a/tests/sigurnost/test_s01_tuda_rezervacija.py b/tests/sigurnost/test_s01_tuda_rezervacija.py
+new file mode 100644
+index 0000000..d2a8a31
+--- /dev/null
++++ b/tests/sigurnost/test_s01_tuda_rezervacija.py
+@@ -0,0 +1,33 @@
++"""S01 – IDOR kod brisanja (CWE-639). Alat ne zna čiji je zapis, pa ovo provjeravamo testom s dva korisnika.
++WSTG-ATHZ-04 · ASVS v5.0.0-8.2.2 (L1)."""
++
++import pytest
++from fastapi.testclient import TestClient
++
++from tests.sigurnost.conftest import rezerviraj
++
++pytestmark = pytest.mark.sigurnost
++
++
++def _moje(client: TestClient, zaglavlja: dict[str, str]) -> list[int]:
++    return [r["id"] for r in client.get("/api/rezervacije/moje", headers=zaglavlja).json()]
++
++
++def test_marko_ne_moze_obrisati_aninu_rezervaciju(client: TestClient, prijava, novi_termin) -> None:
++    ana, marko = prijava("ana"), prijava("marko")
++    nova = rezerviraj(client, ana, novi_termin(1), "Kontrolni pregled")
++    assert nova.status_code == 201
++    rezervacija_id = nova.json()["id"]
++
++    brisanje = client.delete(f"/api/rezervacije/{rezervacija_id}", headers=marko)
++
++    assert brisanje.status_code in (403, 404), "tuđi zapis: 403 ili 404, nikako 204"
++    assert rezervacija_id in _moje(client, ana), "ana i dalje vidi svoju rezervaciju"
++
++
++def test_vlasnik_moze_otkazati_svoju(client: TestClient, prijava, novi_termin) -> None:
++    ana = prijava("ana")
++    rezervacija_id = rezerviraj(client, ana, novi_termin(1), "Otkazujem").json()["id"]
++
++    assert client.delete(f"/api/rezervacije/{rezervacija_id}", headers=ana).status_code == 204
++    assert rezervacija_id not in _moje(client, ana)
+diff --git a/tests/sigurnost/test_s02_path_traversal.py b/tests/sigurnost/test_s02_path_traversal.py
+new file mode 100644
+index 0000000..04731ae
+--- /dev/null
++++ b/tests/sigurnost/test_s02_path_traversal.py
+@@ -0,0 +1,20 @@
++"""S02 – path traversal kod preuzimanja datoteke (CWE-22). Kanarinac izvan mape s dokumentima ne smije se moći
++pročitati, ni kad mu ime sadrži korisničko ime. WSTG-ATHZ-01 · ASVS v5.0.0-5.3.2 (L1)."""
++
++import uuid
++
++import pytest
++from fastapi.testclient import TestClient
++
++pytestmark = pytest.mark.sigurnost
++
++
++def test_kanarinac_izvan_mape_nije_dostupan(client: TestClient, prijava, mape) -> None:
++    sadrzaj = f"KANARINAC-{uuid.uuid4()}"
++    ime = f"tajna-ana-{uuid.uuid4()}.txt"
++    (mape.dokumenti.parent / ime).write_text(sadrzaj, encoding="utf-8")
++
++    odgovor = client.get("/api/nalazi/preuzmi", params={"datoteka": f"../{ime}"}, headers=prijava("ana"))
++
++    assert odgovor.status_code != 200
++    assert sadrzaj not in odgovor.text
+diff --git a/tests/sigurnost/test_s03_open_redirect.py b/tests/sigurnost/test_s03_open_redirect.py
+new file mode 100644
+index 0000000..1524f17
+--- /dev/null
++++ b/tests/sigurnost/test_s03_open_redirect.py
+@@ -0,0 +1,16 @@
++"""S03 – open redirect nakon prijave (CWE-601). Dopušten je samo lokalni put. ASVS v5.0.0-1.2.2 (L1)."""
++
++import pytest
++from fastapi.testclient import TestClient
++
++pytestmark = pytest.mark.sigurnost
++
++
++@pytest.mark.parametrize("return_url", ["https://zlo.example/x", "//zlo.example", "/\\zlo.example"])
++def test_vanjska_adresa_ne_preusmjerava_van(client: TestClient, return_url: str) -> None:
++    odgovor = client.post(
++        "/prijava", data={"username": "ana", "password": "Ana12345!", "returnUrl": return_url}
++    )
++
++    assert odgovor.status_code in (302, 303)
++    assert "zlo.example" not in odgovor.headers["location"]
+diff --git a/tests/sigurnost/test_s04_cors.py b/tests/sigurnost/test_s04_cors.py
+new file mode 100644
+index 0000000..395bc07
+--- /dev/null
++++ b/tests/sigurnost/test_s04_cors.py
+@@ -0,0 +1,21 @@
++"""S04 – CORS reflektira bilo koji Origin uz credentials (CWE-942). Dopušteni su samo origini iz konfiguracije.
++WSTG-CLNT-07 · ASVS v5.0.0-3.4.2 (L1)."""
++
++import pytest
++from fastapi.testclient import TestClient
++
++pytestmark = pytest.mark.sigurnost
++
++ZLO = "https://zlo.example"
++
++
++def test_zahtjev_s_nepoznatog_origina(client: TestClient, prijava) -> None:
++    odgovor = client.get("/api/ja", headers={**prijava("ana"), "Origin": ZLO})
++
++    assert odgovor.headers.get("access-control-allow-origin") not in (ZLO, "*")
++
++
++def test_preflight_s_nepoznatog_origina(client: TestClient) -> None:
++    odgovor = client.options("/api/ja", headers={"Origin": ZLO, "Access-Control-Request-Method": "GET"})
++
++    assert odgovor.headers.get("access-control-allow-origin") not in (ZLO, "*")
+diff --git a/tests/sigurnost/test_s09_ispis_xss.py b/tests/sigurnost/test_s09_ispis_xss.py
+new file mode 100644
+index 0000000..02b9823
+--- /dev/null
++++ b/tests/sigurnost/test_s09_ispis_xss.py
+@@ -0,0 +1,25 @@
++"""S09 – pohranjeni XSS na stranici za ispis (CWE-79). Pasivni ZAP ne sprema unos i ne otvara ispis.
++WSTG-INPV-02 · ASVS v5.0.0-1.2.1 (L1), v5.0.0-3.4.3 (L2, CSP)."""
++
++import pytest
++from fastapi.testclient import TestClient
++
++from tests.sigurnost.conftest import rezerviraj
++
++pytestmark = pytest.mark.sigurnost
++
++NAPAD = "<script>alert('x')</script><img src=x onerror=alert(1)>"
++
++
++def test_napomena_se_ispisuje_kodirano_uz_csp(client: TestClient, prijava, novi_termin) -> None:
++    ana = prijava("ana")
++    nova = rezerviraj(client, ana, novi_termin(1), NAPAD)
++    assert nova.status_code == 201
++
++    ispis = client.get(f"/ispis/rezervacije/{nova.json()['id']}", headers=ana)
++
++    assert ispis.status_code == 200
++    assert "<script>alert('x')</script>" not in ispis.text
++    assert "<img src=x onerror" not in ispis.text
++    assert "&lt;script&gt;" in ispis.text
++    assert "default-src 'none'" in ispis.headers["content-security-policy"]
+diff --git a/tests/sigurnost/test_s10_zadnje_mjesto.py b/tests/sigurnost/test_s10_zadnje_mjesto.py
+new file mode 100644
+index 0000000..b7e1333
+--- /dev/null
++++ b/tests/sigurnost/test_s10_zadnje_mjesto.py
+@@ -0,0 +1,60 @@
++"""S10 – utrka kod zadnjeg slobodnog mjesta (CWE-362). Pojedinačni zahtjev je uvijek ispravan; greška postoji samo
++kad stigne više zahtjeva istodobno – zato je nijedan alat iz pipelinea ne vidi. WSTG-BUSL-05 · ASVS v5.0.0-2.3.4 (L2).
++
++Bitno: stvarni poslužitelj (fixture ``posluzitelj`` – TestClient ne pomaže), barijera da svi zahtjevi krenu zajedno
++i provjera da je TOČNO jedan uspio."""
++
++import threading
++import uuid
++
++import httpx2 as httpx
++import pytest
++
++from tests.conftest import LOZINKE
++from tests.sigurnost.conftest import rezerviraj, uvezi_termin
++
++pytestmark = pytest.mark.sigurnost
++
++KORISNIKA = 10
++LOZINKA = "Lozinka12345!"
++
++
++def _token(klijent: httpx.Client, username: str, lozinka: str) -> str:
++    odgovor = klijent.post("/api/auth/login", json={"username": username, "password": lozinka})
++    assert odgovor.status_code == 200, odgovor.text
++    return odgovor.json()["token"]
++
++
++def test_samo_jedan_dobiva_zadnje_mjesto(posluzitelj) -> None:
++    with httpx.Client(base_url=posluzitelj.url, timeout=30) as klijent:
++        lijecnik = {"Authorization": f"Bearer {_token(klijent, 'dr.horvat', LOZINKE['dr.horvat'])}"}
++        termin = uvezi_termin(klijent, lijecnik, kapacitet=1)
++        tokeni = []
++        for _ in range(KORISNIKA):
++            username = "utrka" + uuid.uuid4().hex[:10]
++            registracija = klijent.post("/api/auth/register", json={
++                "username": username, "password": LOZINKA, "email": f"{username}@primjer.hr",
++                "ime": "Test", "prezime": "Utrka"})
++            assert registracija.status_code == 201, registracija.text
++            tokeni.append(_token(klijent, username, LOZINKA))
++
++    start = threading.Barrier(KORISNIKA)
++    kodovi: list[int] = []
++    brava = threading.Lock()
++
++    def posalji(token: str) -> None:
++        with httpx.Client(base_url=posluzitelj.url, timeout=60) as k:
++            start.wait(timeout=20)                      # svi kreću zajedno
++            odgovor = rezerviraj(k, {"Authorization": f"Bearer {token}"}, termin, "Utrka")
++        with brava:
++            kodovi.append(odgovor.status_code)
++
++    dretve = [threading.Thread(target=posalji, args=(t,)) for t in tokeni]
++    for d in dretve:
++        d.start()
++    for d in dretve:
++        d.join(timeout=90)
++
++    assert sorted(kodovi) == [201] + [409] * (KORISNIKA - 1), f"kodovi odgovora: {sorted(kodovi)}"
++    red = posluzitelj.app.state.baza.jedan("SELECT kapacitet, zauzeto FROM termini WHERE id = ?", (termin,))
++    assert red["zauzeto"] == red["kapacitet"], "slobodnih mjesta nakon utrke mora biti 0"
+diff --git a/tests/sigurnost/test_s12_logiranje.py b/tests/sigurnost/test_s12_logiranje.py
+new file mode 100644
+index 0000000..78ce8b1
+--- /dev/null
++++ b/tests/sigurnost/test_s12_logiranje.py
+@@ -0,0 +1,26 @@
++"""S12 – logiranje (CWE-532, CWE-778). Alat ne čita log i ne zna da je 48291736504 OIB.
++ASVS v5.0.0-16.2.5 (L2) osjetljivi podaci u logu · v5.0.0-16.3.1 (L2) zapis neuspjele prijave."""
++
++import logging
++
++import pytest
++from fastapi.testclient import TestClient
++
++from tests.sigurnost.conftest import OIB, rezerviraj
++
++pytestmark = pytest.mark.sigurnost
++
++
++def test_log_bez_tajni_sa_zapisom_neuspjele_prijave(client: TestClient, prijava, novi_termin, caplog) -> None:
++    caplog.set_level(logging.INFO, logger="medtermin")
++    ana = prijava("ana")
++    assert rezerviraj(client, ana, novi_termin(1), "Pregled").status_code == 201
++    neuspjela = client.post("/api/auth/login", json={"username": "marko", "password": "pogresna"})
++    assert neuspjela.status_code == 401
++
++    assert "Ana12345!" not in caplog.text
++    assert OIB not in caplog.text
++    assert "*******6504" in caplog.text
++    assert any(
++        z.levelno == logging.WARNING and "marko" in z.getMessage() for z in caplog.records
++    ), "zapis neuspjele prijave za marka na razini WARNING"
+diff --git a/tests/sigurnost/test_s13_fail_open.py b/tests/sigurnost/test_s13_fail_open.py
+new file mode 100644
+index 0000000..3b355e5
+--- /dev/null
++++ b/tests/sigurnost/test_s13_fail_open.py
+@@ -0,0 +1,17 @@
++"""S13 – fail-open (CWE-636, CWE-209). Iznimka nastaje samo na rubnom ulazu koji skener ne šalje.
++WSTG-ERRH-01, WSTG-ATHZ-02 · ASVS v5.0.0-16.5.3 (L2)."""
++
++import pytest
++from fastapi.testclient import TestClient
++
++pytestmark = pytest.mark.sigurnost
++
++
++@pytest.mark.parametrize("format_", ["xml", ""])
++def test_tudi_nalaz_s_nepoznatim_formatom(client: TestClient, prijava, format_: str) -> None:
++    odgovor = client.get("/api/nalazi/1", params={"format": format_}, headers=prijava("marko"))
++
++    assert odgovor.status_code in (400, 403, 404)
++    assert "Krvna slika" not in odgovor.text
++    assert "Traceback" not in odgovor.text
++    assert "Error" not in odgovor.text
+-- 
+2.43.0
+

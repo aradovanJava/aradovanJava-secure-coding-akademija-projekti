@@ -1,0 +1,47 @@
+From 5ad9f73f965f54689268746a460eadfd78127f79 Mon Sep 17 00:00:00 2001
+From: Aleksander Radovan <aleksander.radovan@gmail.com>
+Date: Thu, 19 Nov 2026 17:05:21 +0000
+Subject: [PATCH] =?UTF-8?q?DOKAZ=20=E2=80=93=20ne=20spajati:=20vra=C4=87en?=
+ =?UTF-8?q?=20S10=20(provjeri=20pa=20upi=C5=A1i=20za=20zadnje=20mjesto)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Nijedan alat iz pipelinea ovo ne vidi; vrata padaju samo zbog sigurnosnog testa S10.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XPnKLRqpxkJxTv6qnqZmM6
+---
+ medtermin/rezervacije/servis.py | 15 +++++----------
+ 1 file changed, 5 insertions(+), 10 deletions(-)
+
+diff --git a/medtermin/rezervacije/servis.py b/medtermin/rezervacije/servis.py
+index 0321773..d20c12e 100644
+--- a/medtermin/rezervacije/servis.py
++++ b/medtermin/rezervacije/servis.py
+@@ -70,17 +70,12 @@ class RezervacijaService:
+         log.info(
+             "Nova rezervacija: termin %s, korisnik %s, OIB %s", termin_id, korisnik.username, maskiraj_oib(zahtjev.oib)
+         )
+-        azurirano = self._baza.izvrsi(
+-            "UPDATE termini SET zauzeto = zauzeto + 1 WHERE id = ? AND zauzeto < kapacitet", (termin_id,)
+-        )
+-        if azurirano == 0:
++        termin = self._baza.jedan("SELECT kapacitet, zauzeto FROM termini WHERE id = ?", (termin_id,))
++        if termin is None or termin["zauzeto"] >= termin["kapacitet"]:
+             raise ApiGreska(409, "Nema slobodnih mjesta.")
+-        try:
+-            oznaka = self._bis.upisi_u_raspored(termin_id, korisnik.username)
+-            return self._spremi(zahtjev, korisnik, oznaka)
+-        except Exception:
+-            self._baza.izvrsi("UPDATE termini SET zauzeto = zauzeto - 1 WHERE id = ?", (termin_id,))
+-            raise
++        oznaka = self._bis.upisi_u_raspored(termin_id, korisnik.username)
++        self._baza.izvrsi("UPDATE termini SET zauzeto = zauzeto + 1 WHERE id = ?", (termin_id,))
++        return self._spremi(zahtjev, korisnik, oznaka)
+ 
+     def obrisi(self, rezervacija_id: int, korisnik: PrijavljeniKorisnik) -> None:
+         rezervacija = self.pronadi(rezervacija_id)
+-- 
+2.43.0
+
