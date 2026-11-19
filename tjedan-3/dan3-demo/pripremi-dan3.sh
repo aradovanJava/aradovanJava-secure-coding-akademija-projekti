@@ -16,7 +16,7 @@ git switch -q -c nalaz/N-01-istek-sesije
 git am -q --committer-date-is-author-date "$ovdje"/zakrpe/000[6-7]-*.patch
 git switch -q main
 git merge -q --no-ff -m "Spoji N-01: istek i prekid sesije (test crven → zelen)" nalaz/N-01-istek-sesije
-git am -q --committer-date-is-author-date "$ovdje"/zakrpe/000[8-9]-*.patch
+git am -q --committer-date-is-author-date "$ovdje"/zakrpe/000[8-9]-*.patch "$ovdje"/zakrpe/0010-*.patch
 for d in s06 s10; do
   git switch -q -c "dokaz/regresija-$d" main
   git am -q --committer-date-is-author-date "$ovdje/dokaz/regresija-$d.patch"

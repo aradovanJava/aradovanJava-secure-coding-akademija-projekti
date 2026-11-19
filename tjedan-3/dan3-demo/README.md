@@ -8,7 +8,7 @@ T2 projektu (MedTermin, Java, referentno rješenje) s DevSecOps predloškom iz T
 
 | Blok | U demo repozitoriju |
 |---|---|
-| 1 Pipeline | PR #11 (opće iznimke → Spring Boot 3.5.16 + Tomcat 10.1.61 + iznimke s rokom), Dependabot PR-ovi (#4 Boot 4.1 ne prolazi), PR #13 i #14 „DOKAZ – ne spajati“ (S06: SCA + Semgrep; S10: pada samo test) |
+| 1 Pipeline | PR #11 (opće iznimke → Spring Boot 3.5.16 + Tomcat 10.1.61 + iznimke s rokom), Dependabot PR-ovi (ne prolaze #4 Boot 4.1 – Jackson 3 i #8 SpotBugs 4.10 – novi nalaz), PR #13 i #14 „DOKAZ – ne spajati“ (S06: SCA + Semgrep; S10: pada samo test) |
 | 2 Ispitivanje | `docs/plan-ispitivanja.md`, `docs/rucni-testovi.http`, sigurnosni testovi S01–S04, S09, S10, S12, S13, nalaz N-01 (PR #12: test crven → popravak zelen) i N-02 (otvoren) |
 | 3 Model prijetnji | `docs/dfd.md` + `dfd.png` (izvor `dfd.dot`), `docs/stride.md` (29 prijetnji) |
 | 4 Rizik | `docs/registar-rizika.md` (9 rizika, sva četiri postupanja) |
@@ -16,6 +16,13 @@ T2 projektu (MedTermin, Java, referentno rješenje) s DevSecOps predloškom iz T
 
 Provjereno 18. 11. 2026.: vrata zelena na `main` (60 testova, pokrivenost 90,2 %), crvena na PR-ovima #13 i #14 te na
 prvom commitu PR-a #12.
+
+## Upute za predavača (Word)
+
+`vodic/T3-Dan3-demo-upute-za-predavaca.docx` – detaljne upute po blokovima (na što kliknuti, što se vidi, što reći,
+pitanja s očekivanim odgovorima, priprema i rješavanje problema). Gradi se s
+`node vodic/napravi_vodic_dan3.js vodic/T3-Dan3-demo-upute-za-predavaca.docx` (npm paket `docx`; slika `dfd.png` iz
+demo repozitorija mora biti u mapi `vodic/`).
 
 ## Ponovno stvaranje
 
