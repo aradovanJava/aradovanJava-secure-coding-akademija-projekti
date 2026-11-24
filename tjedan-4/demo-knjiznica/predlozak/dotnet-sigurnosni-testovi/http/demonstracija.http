@@ -1,0 +1,190 @@
+# Knjižnica – zahtjevi za demonstraciju K01–K08 (samo za predavača)
+# Za: IntelliJ IDEA, PyCharm ili Rider (JetBrains HTTP Client).
+# Pokrenite aplikaciju, zatim zahtjeve šaljite redom (ikona ▶ uz zahtjev ili 'Send Request').
+
+@host = http://localhost:5080
+
+
+### ==== Prijava (prvo pošaljite ova četiri zahtjeva) ====
+
+### Prijava: ana
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "ana", "lozinka": "Ana123!"}
+
+> {% client.global.set("token_ana", response.body.token); %}
+
+### Prijava: marko
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "marko", "lozinka": "Marko123!"}
+
+> {% client.global.set("token_marko", response.body.token); %}
+
+### Prijava: iva
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "iva", "lozinka": "Iva123!"}
+
+> {% client.global.set("token_iva", response.body.token); %}
+
+### Prijava: knjiznicar
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "knjiznicar", "lozinka": "Knjiga123!"}
+
+> {% client.global.set("token_knjiznicar", response.body.token); %}
+
+
+### ==== K01 – tuđi profil promjenom ID-a (A01) ====
+
+### K01 Ana traži Markov profil
+# Polazno: 200 s Markovom adresom i telefonom. Nakon ispravka: 404.
+GET {{host}}/api/clanovi/2
+Authorization: Bearer {{token_ana}}
+
+### K01 Ana traži nepostojećeg člana
+# Nakon ispravka isti odgovor kao za tuđi profil (ne otkriva postoji li član).
+GET {{host}}/api/clanovi/999
+Authorization: Bearer {{token_ana}}
+
+### K01 Knjižničar smije vidjeti Markov profil
+# 200 i prije i poslije ispravka (funkcionalnost ostaje).
+GET {{host}}/api/clanovi/2
+Authorization: Bearer {{token_knjiznicar}}
+
+
+### ==== K02 – SQL umetanje u pretrazi (A05) ====
+
+### K02 Uvjet koji je uvijek istinit
+# trazi = ' OR '1'='1' --  | Polazno: vraća i skrivenu knjigu 'Interni popis za otpis'. Nakon ispravka: prazan popis.
+GET {{host}}/api/knjige?trazi=%27%20OR%20%271%27%3D%271%27%20--%20
+
+### K02 UNION s tablicom korisnika
+# trazi = %' UNION SELECT id, korisnicko_ime, lozinka_hash, 0 FROM korisnici --  | Polazno: korisnička imena i hashevi lozinki kao 'knjige' (ulaz za K04). Nakon ispravka: prazan popis.
+GET {{host}}/api/knjige?trazi=%25%27%20UNION%20SELECT%20id%2C%20korisnicko_ime%2C%20lozinka_hash%2C%200%20FROM%20korisnici%20--%20
+
+### K02 Preduga pretraga
+# Nakon ispravka: 400 (ograničenje duljine).
+GET {{host}}/api/knjige?trazi=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+
+### ==== K03 – ranjiva ovisnost za YAML (A03) ====
+
+### K03 Katalog s oznakom tipa
+# Polazno: 200 (parser stvara objekt iz oznake). Nakon ispravka: 400.
+POST {{host}}/api/katalog/uvoz
+Authorization: Bearer {{token_knjiznicar}}
+Content-Type: application/yaml
+
+- naslov: Proba
+  autor: Netko
+  godina: 2001
+  dodatno: !System.Text.StringBuilder {}
+
+### K03 Ispravan katalog
+# 200 i prije i poslije ispravka.
+POST {{host}}/api/katalog/uvoz
+Authorization: Bearer {{token_knjiznicar}}
+Content-Type: application/yaml
+
+- naslov: Kiklop
+  autor: Ranko Marinković
+  godina: 1965
+- naslov: Gospoda Glembajevi
+  autor: Miroslav Krleža
+  godina: 1929
+
+
+### ==== K04 – lozinke kao MD5 bez soli (A04) ====
+
+### K04 Registracija: korisnik test1
+POST {{host}}/api/registracija
+Content-Type: application/json
+
+{"korisnickoIme": "test1", "lozinka": "Ljeto2026!", "ime": "Test Jedan", "email": "test1@primjer.hr"}
+
+### K04 Registracija: korisnik test2 s istom lozinkom
+# Zatim ponovite zahtjev 'K02 UNION': polazno test1 i test2 imaju isti hash od 32 heksadecimalna znaka (MD5).
+POST {{host}}/api/registracija
+Content-Type: application/json
+
+{"korisnickoIme": "test2", "lozinka": "Ljeto2026!", "ime": "Test Dva", "email": "test2@primjer.hr"}
+
+
+### ==== K05 – detalji greške i sigurnosna zaglavlja (A02) ====
+
+### K05 Nepostojeća knjiga
+# Polazno: 500 sa stack traceom. Nakon ispravka: 404 s kratkom porukom.
+GET {{host}}/api/knjige/999999
+
+### K05 Zaglavlja odgovora
+# Nakon ispravka: X-Content-Type-Options, X-Frame-Options, Content-Security-Policy, Referrer-Policy, Cross-Origin-Resource-Policy, Cache-Control.
+GET {{host}}/api/knjige
+
+
+### ==== K06 – produljenje bez poslovnih pravila (A06) ====
+
+### K06 Produljenje za 365 dana
+# Polazno: 200, rok pomaknut godinu dana. Nakon ispravka: 400.
+POST {{host}}/api/posudbe/3/produzi
+Authorization: Bearer {{token_ana}}
+Content-Type: application/json
+
+{"dana": 365}
+
+### K06 Produljenje za -30 dana
+# Polazno: 200, rok pomaknut unatrag. Nakon ispravka: 400.
+POST {{host}}/api/posudbe/3/produzi
+Authorization: Bearer {{token_ana}}
+Content-Type: application/json
+
+{"dana": -30}
+
+### K06 Uobičajeno produljenje za 7 dana
+# Pošaljite tri puta: nakon ispravka prva dva su 200, treći 409 (najviše dva produljenja).
+POST {{host}}/api/posudbe/2/produzi
+Authorization: Bearer {{token_ana}}
+Content-Type: application/json
+
+{"dana": 7}
+
+
+### ==== K07 – lozinka u dnevniku i krivotvoreni zapis (A09) ====
+
+### K07 Prijava s novim redom u korisničkom imenu
+# Pogledajte konzolu poslužitelja. Polazno: novi red u zapisu i lažni LOGIN_SUCCESS. Nakon ispravka: LOGIN_FAILED, a novi red zamijenjen znakom _.
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "ana\n2026-11-25 10:00:00 INFO SECURITY_EVENT LOGIN_SUCCESS korisnik=knjiznicar", "lozinka": "x"}
+
+### K07 Neuspjela prijava (kriva lozinka)
+# Polazno: u konzoli piše lozinka, a neuspjeh nije zabilježen. Nakon ispravka: SECURITY_EVENT LOGIN_FAILED (WARN), bez lozinke.
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "ana", "lozinka": "kriva-lozinka"}
+
+
+### ==== K08 – provjera članarine koja propušta (A10) ====
+
+### K08 Marko (istekla članarina) posuđuje knjigu
+# Polazno: 201. Nakon ispravka: 403.
+POST {{host}}/api/posudbe
+Authorization: Bearer {{token_marko}}
+Content-Type: application/json
+
+{"knjigaId": 4}
+
+### K08 Iva (status koji provjera ne poznaje) posuđuje knjigu
+# Polazno: 201. Nakon ispravka: 403 i SECURITY_EVENT LOAN_DENIED u konzoli.
+POST {{host}}/api/posudbe
+Authorization: Bearer {{token_iva}}
+Content-Type: application/json
+
+{"knjigaId": 4}

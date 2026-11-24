@@ -14,8 +14,9 @@ Ista aplikacija postoji u tri tehnologije – odaberite onu u kojoj ste radili p
 | `dotnet/` | C#, .NET 10, ASP.NET Core | 5080 | `dotnet run --project src/Knjiznica.Api` |
 | `python/` | Python 3.12+, FastAPI | 8000 | `python run.py` |
 
-Detalji za IDE (IntelliJ IDEA, Visual Studio, VS Code, PyCharm) su u datoteci `KAKO-POKRENUTI.md` u svakoj mapi,
-a gotovi zahtjevi u `http/knjiznica.http`.
+Detalji za IDE (IntelliJ IDEA, Visual Studio, Rider, VS Code, PyCharm) su u datoteci `KAKO-POKRENUTI.md` u svakoj
+mapi. Gotovi zahtjevi su u `http/knjiznica.http` (JetBrains HTTP Client) i `http/knjiznica-vs.http` (Visual Studio,
+VS Code s proširenjem REST Client).
 
 ## Korisnici
 

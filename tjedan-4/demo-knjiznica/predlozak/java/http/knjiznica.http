@@ -1,0 +1,105 @@
+# Knjižnica – primjeri zahtjeva
+# Za: IntelliJ IDEA, PyCharm ili Rider (JetBrains HTTP Client).
+# Pokrenite aplikaciju, zatim zahtjeve šaljite redom (ikona ▶ uz zahtjev ili 'Send Request').
+
+@host = http://localhost:8080
+
+
+### ==== Prijava (tokeni se spremaju za ostale zahtjeve) ====
+
+### Prijava: ana
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "ana", "lozinka": "Ana123!"}
+
+> {% client.global.set("token_ana", response.body.token); %}
+
+### Prijava: marko
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "marko", "lozinka": "Marko123!"}
+
+> {% client.global.set("token_marko", response.body.token); %}
+
+### Prijava: iva
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "iva", "lozinka": "Iva123!"}
+
+> {% client.global.set("token_iva", response.body.token); %}
+
+### Prijava: knjiznicar
+POST {{host}}/api/prijava
+Content-Type: application/json
+
+{"korisnickoIme": "knjiznicar", "lozinka": "Knjiga123!"}
+
+> {% client.global.set("token_knjiznicar", response.body.token); %}
+
+
+### ==== Katalog ====
+
+### Svi naslovi
+GET {{host}}/api/knjige
+
+### Pretraga po naslovu
+GET {{host}}/api/knjige?trazi=zlato
+
+### Podaci o knjizi 1
+GET {{host}}/api/knjige/1
+
+
+### ==== Članovi ====
+
+### Moj profil (ana)
+GET {{host}}/api/clanovi/1
+Authorization: Bearer {{token_ana}}
+
+### Profil člana 1 (knjižničar)
+GET {{host}}/api/clanovi/1
+Authorization: Bearer {{token_knjiznicar}}
+
+### Registracija novog člana
+POST {{host}}/api/registracija
+Content-Type: application/json
+
+{"korisnickoIme": "petra", "lozinka": "Petra2026!", "ime": "Petra Perić", "email": "petra.peric@primjer.hr"}
+
+
+### ==== Posudbe ====
+
+### Moje posudbe (ana)
+GET {{host}}/api/posudbe
+Authorization: Bearer {{token_ana}}
+
+### Nova posudba (ana)
+POST {{host}}/api/posudbe
+Authorization: Bearer {{token_ana}}
+Content-Type: application/json
+
+{"knjigaId": 5}
+
+### Produljenje posudbe 1 za 7 dana (ana)
+POST {{host}}/api/posudbe/1/produzi
+Authorization: Bearer {{token_ana}}
+Content-Type: application/json
+
+{"dana": 7}
+
+
+### ==== Uvoz kataloga (samo knjižničar) ====
+
+### Uvoz dviju knjiga
+POST {{host}}/api/katalog/uvoz
+Authorization: Bearer {{token_knjiznicar}}
+Content-Type: application/yaml
+
+- naslov: Kiklop
+  autor: Ranko Marinković
+  godina: 1965
+- naslov: Gospoda Glembajevi
+  autor: Miroslav Krleža
+  godina: 1929
