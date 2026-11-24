@@ -43,6 +43,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
+    context.Response.Headers["Cache-Control"] = "no-store";
     await next();
 });
 // @@END K05

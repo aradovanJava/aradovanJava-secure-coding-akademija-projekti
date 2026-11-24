@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <!-- Izravna referenca na ispravljenu tranzitivnu ovisnost (GHSA-2m69-gcr7-jv3q, SQLite < 3.50.2). -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
 <!-- @@VULN K03 -->
     <PackageReference Include="YamlDotNet" Version="4.3.2" />
 <!-- @@SECURE K03 -->

@@ -81,6 +81,8 @@ def create_app() -> FastAPI:
         odgovor.headers["X-Frame-Options"] = "DENY"
         odgovor.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         odgovor.headers["Referrer-Policy"] = "no-referrer"
+        odgovor.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        odgovor.headers["Cache-Control"] = "no-store"
         return odgovor
 
     # @@END K05

@@ -1,7 +1,7 @@
 name: t4-demo-alati
 
-# Pokreće alate iz tečaja nad RANJIVOM verzijom demo aplikacije Knjižnica i ispisuje sažetak nalaza
-# (podloga za vodič predavača: što koji alat nađe, a što ne).
+# Pokreće alate iz tečaja nad ranjivom verzijom i nad rješenjem demo aplikacije Knjižnica i ispisuje sažetak
+# nalaza (podloga za vodič predavača: što koji alat nađe, što ne nađe i što nestane nakon ispravka).
 on:
   push:
     paths:
@@ -11,18 +11,15 @@ on:
 
 jobs:
   alati:
-    name: ${{ matrix.stack }}
+    name: ${{ matrix.stack }} (${{ matrix.mode }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - stack: java
-            port: 8080
-          - stack: dotnet
-            port: 5080
-          - stack: python
-            port: 8000
+        stack: [java, dotnet, python]
+        mode: [ranjivo, rjesenje]
+    env:
+      PORT: ${{ matrix.stack == 'java' && '8080' || matrix.stack == 'dotnet' && '5080' || '8000' }}
     steps:
       - uses: actions/checkout@v4
       - if: matrix.stack == 'java'
@@ -37,26 +34,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Ranjiva verzija
-        run: python3 tjedan-4/demo-knjiznica/generiraj.py --stack ${{ matrix.stack }} --mode ranjivo --dest app
+      - name: Generiranje
+        run: python3 tjedan-4/demo-knjiznica/generiraj.py --stack ${{ matrix.stack }} --mode ${{ matrix.mode }} --dest app
       - name: Semgrep (p/owasp-top-ten)
         continue-on-error: true
-        run: pipx run semgrep scan --metrics=off --config p/owasp-top-ten --json -o semgrep.json app
-      - name: OSV-Scanner
-        continue-on-error: true
-        run: docker run --rm -v "$PWD/app:/src" ghcr.io/google/osv-scanner:latest scan source -r /src --format json > osv.json
-      - name: SpotBugs + Find Security Bugs
+        run: pipx run semgrep scan --metrics=off --config p/owasp-top-ten --exclude tests --json -o semgrep.json app
+      - name: SpotBugs + Find Security Bugs i SBOM
         if: matrix.stack == 'java'
         continue-on-error: true
         working-directory: app
-        run: mvn -B -ntp -q -Psast compile spotbugs:spotbugs
+        run: |
+          mvn -B -ntp -q -Psast compile spotbugs:spotbugs
+          mvn -B -ntp -q -Psca cyclonedx:makeAggregateBom
+      - name: OSV-Scanner
+        continue-on-error: true
+        run: |
+          if [ "${{ matrix.stack }}" = java ]; then
+            docker run --rm -v "$PWD/app:/src" ghcr.io/google/osv-scanner:latest scan source -L /src/target/bom.json --format json > osv.json
+          else
+            docker run --rm -v "$PWD/app:/src" ghcr.io/google/osv-scanner:latest scan source -r /src --format json > osv.json
+          fi
       - name: Roslyn analizatori i ranjivi paketi
         if: matrix.stack == 'dotnet'
         continue-on-error: true
         working-directory: app
         run: |
-          dotnet build Knjiznica.sln -p:AnalysisMode=All -p:TreatWarningsAsErrors=false 2>&1 | grep -E "warning (CA|NU)[0-9]+" | sed -E 's#^.*/(src/[^(]*)#\1#' | sort -u | tee ../roslyn.txt
-          dotnet list Knjiznica.sln package --vulnerable --include-transitive | tee ../ranjivi-paketi.txt
+          dotnet build src/Knjiznica.Api/Knjiznica.Api.csproj -p:AnalysisMode=All 2>&1 \
+            | grep -oE "Knjiznica.Api/[A-Za-z/]+\.cs\([0-9]+,[0-9]+\): warning (CA2100|CA5351|CA3075|CA5350|CA2300|CA2326|CA5394)[^[]*" | sort -u | tee ../roslyn.txt
+          dotnet list Knjiznica.sln package --vulnerable --include-transitive 2>&1 | grep -E "^\s+>" | sort -u | tee ../ranjivi-paketi.txt
       - name: Bandit i pip-audit
         if: matrix.stack == 'python'
         continue-on-error: true
@@ -64,7 +69,7 @@ jobs:
         run: |
           python -m venv .venv && .venv/bin/pip install -q -r requirements-dev.txt
           .venv/bin/bandit -q -r knjiznica -f json -o ../bandit.json || true
-          .venv/bin/pip-audit -r requirements.txt | tee ../pip-audit.txt || true
+          .venv/bin/pip-audit -r requirements.txt 2>&1 | tee ../pip-audit.txt || true
       - name: Pokretanje aplikacije
         working-directory: app
         run: |
@@ -73,19 +78,19 @@ jobs:
             dotnet) (dotnet run --project src/Knjiznica.Api --launch-profile http > ../app.log 2>&1 &) ;;
             python) (.venv/bin/uvicorn knjiznica.main:app --port 8000 > ../app.log 2>&1 &) ;;
           esac
-          for i in $(seq 1 60); do curl -fs http://localhost:${{ matrix.port }}/api/knjige > /dev/null && break; sleep 2; done
-          echo "--- odgovor na nepostojeću knjigu:"; curl -s -i http://localhost:${{ matrix.port }}/api/knjige/999999 | head -c 1500; echo
+          for i in $(seq 1 60); do curl -fs http://localhost:$PORT/api/knjige > /dev/null && break; sleep 2; done
+          curl -s -i http://localhost:$PORT/api/knjige/999999 | head -c 1200 > ../greska.txt; cat ../greska.txt
       - name: OWASP ZAP baseline
         continue-on-error: true
         run: |
           docker run --rm --network host -v "$PWD:/zap/wrk:rw" -u root zaproxy/zap-stable \
-            zap-baseline.py -t http://localhost:${{ matrix.port }}/api/knjige -J zap.json -I
+            zap-baseline.py -t http://localhost:$PORT/api/knjige -J zap.json -I
       - name: Sažetak
         if: always()
         run: |
-          python3 tjedan-4/demo-knjiznica/ci/alati_sazetak.py ${{ matrix.stack }} semgrep=semgrep.json osv=osv.json \
-            spotbugs=app/target/spotbugsXml.xml zap=zap.json bandit=bandit.json
-          for f in roslyn.txt ranjivi-paketi.txt pip-audit.txt; do
-            [ -f "$f" ] && echo "::notice title=$f (${{ matrix.stack }})::$(head -c 3000 "$f" | sed ':a;N;$!ba;s/\n/%0A/g')"
+          python3 tjedan-4/demo-knjiznica/ci/alati_sazetak.py "${{ matrix.stack }} ${{ matrix.mode }}" semgrep=semgrep.json \
+            osv=osv.json spotbugs=app/target/spotbugsXml.xml zap=zap.json bandit=bandit.json
+          for f in roslyn.txt ranjivi-paketi.txt pip-audit.txt greska.txt; do
+            [ -f "$f" ] && echo "::notice title=$f (${{ matrix.stack }} ${{ matrix.mode }})::$(head -c 2500 "$f" | sed ':a;N;$!ba;s/\n/%0A/g')"
           done
           true
