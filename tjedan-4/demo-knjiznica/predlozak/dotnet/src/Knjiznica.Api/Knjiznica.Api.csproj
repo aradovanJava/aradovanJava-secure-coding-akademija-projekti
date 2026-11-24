@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Knjiznica.Api</RootNamespace>
+    <AssemblyName>Knjiznica.Api</AssemblyName>
+    <!-- Upozorenja NuGetAudit (NU1901–NU1904) ostaju upozorenja, ne prekidaju build. -->
+    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+<!-- @@VULN K03 -->
+    <PackageReference Include="YamlDotNet" Version="4.3.2" />
+<!-- @@SECURE K03 -->
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+<!-- @@END K03 -->
+  </ItemGroup>
+
+</Project>

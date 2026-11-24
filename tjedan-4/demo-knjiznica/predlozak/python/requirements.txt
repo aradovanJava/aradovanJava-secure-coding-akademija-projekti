@@ -1,0 +1,9 @@
+# Ovisnosti aplikacije (zaključane verzije)
+fastapi==0.162.0
+pydantic==2.14.2
+uvicorn==0.54.0
+# @@VULN K03
+PyYAML==5.3.1
+# @@SECURE K03
+PyYAML==6.0.3
+# @@END K03

@@ -1,0 +1,32 @@
+[project]
+name = "knjiznica"
+version = "1.0.0"
+description = "Knjižnica – katalog, članovi i posudbe gradske knjižnice"
+requires-python = ">=3.12"
+# Ovisnosti su zaključane u requirements.txt i requirements-dev.txt.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+  "funkcionalni: funkcionalni testovi aplikacije",
+]
+
+[tool.coverage.run]
+source = ["knjiznica"]
+branch = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# S = pravila iz Bandita (flake8-bandit)
+select = ["E", "F", "I", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S108", "S324"]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv"]
